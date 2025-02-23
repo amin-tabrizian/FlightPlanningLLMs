@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
     <Document id="1">
-        <Style id="16">
-            <LineStyle id="17">
+        <Style id="18">
+            <PolyStyle id="19">
+                <color>330000ff</color>
+                <colorMode>normal</colorMode>
+                <fill>1</fill>
+                <outline>1</outline>
+            </PolyStyle>
+        </Style>
+        <Style id="22">
+            <LineStyle id="23">
                 <color>ff0000ff</color>
                 <colorMode>normal</colorMode>
                 <width>5</width>
@@ -41,10 +49,21 @@
             </Point>
         </Placemark>
         <Placemark id="15">
+            <name>FlyZone</name>
+            <styleUrl>#18</styleUrl>
+            <Polygon id="14">
+                <outerBoundaryIs>
+                    <LinearRing id="16">
+                        <coordinates>-98.2545517402149,33.48850606662594,0.0 -98.2545517402149,32.47083164493976,0.0 -95.77515854991914,32.47083164493976,0.0 -95.77515854991914,33.48850606662594,0.0 -98.2545517402149,33.48850606662594,0.0</coordinates>
+                    </LinearRing>
+                </outerBoundaryIs>
+            </Polygon>
+        </Placemark>
+        <Placemark id="21">
             <name>PolySolution</name>
-            <styleUrl>#16</styleUrl>
-            <LineString id="14">
-                <coordinates>-95.85123022,32.50449705,150.1677986377836 -96.2,32.55,1500.0 -97.3,32.55,1500.0 -97.3,33.342755,1500.0 -98.21946506508321,33.34275509954574,274.2121167616264</coordinates>
+            <styleUrl>#22</styleUrl>
+            <LineString id="20">
+                <coordinates>-95.85123022,32.50449705,150.1677986377836 -96.6,32.48,150.0 -98.0,32.48,150.0 -98.1,33.0,220.0 -98.21946506508321,33.34275509954574,274.2121167616264</coordinates>
             </LineString>
         </Placemark>
     </Document>

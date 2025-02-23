@@ -19,7 +19,7 @@ def get_coordinates_from_kml(kml_file_path: str, placemark_names: list):
 
         # Dictionary to store results
         placemark_dict = {}
-        placemark_names += ['Origin','Destination']
+        placemark_names += ['Origin','Destination', 'FlyZone']
         # Search for all placemarks in the file
         for elem in root.findall(".//kml:Placemark", namespace):
             name = elem.find("kml:name", namespace)
@@ -86,7 +86,8 @@ def prompt_generator(kml_path, placemarks):
       (first you have to draw the draw the polygons in your brain and 
       try to generate a flight plan that avoids them). 
       Always include the start and end point in your response. 
-      You can generate as many waypoints as you want in order to avoid the polygons. \n'''
+      You can generate as many waypoints as you want in order to avoid the polygons.
+      You have to stay in the fly zone. Try to find the shortest path. \n'''
     if coordinates_dict:
         for name, coords in coordinates_dict.items():
             output += (f"Coordinates for '{name}':\n{coords}\n")

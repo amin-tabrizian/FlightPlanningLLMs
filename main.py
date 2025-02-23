@@ -33,6 +33,9 @@ if float_coordinates:
             polygon_kml.newpoint(name=name, coords=coords)
         elif name == 'Destination':
             polygon_kml.newpoint(name=name, coords=coords)
+        elif name == 'FlyZone':
+            polygon = polygon_kml.newpolygon(name=name, outerboundaryis=coords)
+            polygon.style.polystyle.color = simplekml.Color.changealphaint(51, simplekml.Color.red)
         else:
             polygon_kml.newpolygon(name=name, outerboundaryis=coords)
 

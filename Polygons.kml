@@ -638,5 +638,32 @@
 			</outerBoundaryIs>
 		</Polygon>
 	</Placemark>
+	<Placemark id="0CCACC5737365FCAEA66">
+		<name>FlyZone</name>
+		<LookAt>
+			<longitude>-96.72375554215719</longitude>
+			<latitude>32.92717529602928</latitude>
+			<altitude>58.71591211583948</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>610088.8368941098</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_08D2D03AF53665B42F0B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-98.25455174021489,33.48850606662594,0 
+						-98.25455174021489,32.47083164493976,0 
+						-95.77515854991914,32.47083164493976,0 
+						-95.77515854991914,33.48850606662594,0 
+						-98.25455174021489,33.48850606662594,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
 </Document>
 </kml>
