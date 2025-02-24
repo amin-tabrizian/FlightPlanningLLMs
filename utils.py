@@ -127,6 +127,10 @@ def compute_total_path_length(waypoints):
         total_distance += distance
     return total_distance
 
+def compute_total_waypoints(waypoints):
+    return len(waypoints)
+
+
 
 
 class Waypoint(BaseModel):
@@ -137,5 +141,11 @@ class Waypoint(BaseModel):
 class FlightPlan(BaseModel):
     waypoints: list[Waypoint]
     explanation: str
+
+class Evaluation(BaseModel):
+    valid: bool
+    reasoning: str
+
+
 
 
