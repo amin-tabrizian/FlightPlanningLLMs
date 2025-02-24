@@ -291,7 +291,7 @@
 		</Polygon>
 	</Placemark>
 	<Placemark id="0355DD4CFD328CCA6A92">
-		<name>B5</name>
+		<name>Destination5</name>
 		<LookAt>
 			<longitude>-96.46922525027668</longitude>
 			<latitude>32.77834777376654</latitude>
@@ -308,7 +308,7 @@
 		</Point>
 	</Placemark>
 	<Placemark id="00BFC554BE328CCBF25B">
-		<name>A5</name>
+		<name>Origin5</name>
 		<LookAt>
 			<longitude>-98.1206917120401</longitude>
 			<latitude>33.07021963692636</latitude>
@@ -1259,7 +1259,7 @@
 		</Polygon>
 	</Placemark>
 	<Placemark id="002DAFE57E366EC4514C">
-		<name>A1</name>
+		<name>Origin1</name>
 		<LookAt>
 			<longitude>-97.37867453905567</longitude>
 			<latitude>33.17246282846624</latitude>
@@ -1276,7 +1276,7 @@
 		</Point>
 	</Placemark>
 	<Placemark id="08331E8D82366EC4E2C9">
-		<name>A2</name>
+		<name>Origin2</name>
 		<LookAt>
 			<longitude>-97.37867453905567</longitude>
 			<latitude>33.17246282846624</latitude>
@@ -1293,7 +1293,7 @@
 		</Point>
 	</Placemark>
 	<Placemark id="0555F1EB8B366EC51E90">
-		<name>A3</name>
+		<name>Origin3</name>
 		<LookAt>
 			<longitude>-97.37867455216485</longitude>
 			<latitude>33.17246288286581</latitude>
@@ -1310,7 +1310,7 @@
 		</Point>
 	</Placemark>
 	<Placemark id="046B160423366EC53C7C">
-		<name>A4</name>
+		<name>Origin4</name>
 		<LookAt>
 			<longitude>-97.37867455216485</longitude>
 			<latitude>33.17246288286581</latitude>
@@ -1327,7 +1327,7 @@
 		</Point>
 	</Placemark>
 	<Placemark id="0572568F37366EC562A8">
-		<name>B1</name>
+		<name>Destination1</name>
 		<LookAt>
 			<longitude>-97.37867455216485</longitude>
 			<latitude>33.17246288286581</latitude>
@@ -1344,7 +1344,7 @@
 		</Point>
 	</Placemark>
 	<Placemark id="0E77E4DD32366EC57AB7">
-		<name>B2</name>
+		<name>Destination2</name>
 		<LookAt>
 			<longitude>-97.37867455216485</longitude>
 			<latitude>33.17246288286581</latitude>
@@ -1361,7 +1361,7 @@
 		</Point>
 	</Placemark>
 	<Placemark id="0B41ADCEF0366EC5A586">
-		<name>B3</name>
+		<name>Destination3</name>
 		<LookAt>
 			<longitude>-97.37867455216485</longitude>
 			<latitude>33.17246288286581</latitude>
@@ -1378,7 +1378,7 @@
 		</Point>
 	</Placemark>
 	<Placemark id="07618E6C83366EC5C6F6">
-		<name>B4</name>
+		<name>Destination4</name>
 		<LookAt>
 			<longitude>-97.37867455216485</longitude>
 			<latitude>33.17246288286581</latitude>

@@ -52,10 +52,10 @@ logging.info("Received flight plan response from API.")
 polygon_kml = simplekml.Kml()
 if float_coordinates:
     for name, coords in float_coordinates.items():
-        if name == 'Origin':
+        if 'Origin' in name:
             polygon_kml.newpoint(name=name, coords=coords)
             logging.info(f"Added point for {name}.")
-        elif name == 'Destination':
+        elif 'Destination' in name:
             polygon_kml.newpoint(name=name, coords=coords)
             logging.info(f"Added point for {name}.")
         elif name == 'FlyZone':

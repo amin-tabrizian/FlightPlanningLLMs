@@ -24,7 +24,7 @@ def get_coordinates_from_kml(kml_file_path: str, placemark_names: list):
 
         # Dictionary to store results
         placemark_dict = {}
-        placemark_names += ['Origin','Destination', 'FlyZone']
+        placemark_names += ['FlyZone']
         # Search for all placemarks in the file
         for elem in root.findall(".//kml:Placemark", namespace):
             name = elem.find("kml:name", namespace)
