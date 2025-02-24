@@ -11,7 +11,7 @@
         </Style>
         <Style id="22">
             <LineStyle id="23">
-                <color>ff0000ff</color>
+                <color>ff008000</color>
                 <colorMode>normal</colorMode>
                 <width>5</width>
             </LineStyle>
@@ -63,7 +63,7 @@
             <name>PolySolution</name>
             <styleUrl>#22</styleUrl>
             <LineString id="20">
-                <coordinates>-95.85123022,32.50449705,150.1677986377836 -96.6,32.48,150.0 -98.0,32.48,150.0 -98.1,33.0,220.0 -98.21946506508321,33.34275509954574,274.2121167616264</coordinates>
+                <coordinates>-95.85123022,32.50449705,150.1677986377836 -97.3,32.6,200.0 -98.21946506508321,33.34275509954574,274.2121167616264</coordinates>
             </LineString>
         </Placemark>
     </Document>

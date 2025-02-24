@@ -1,5 +1,10 @@
 import xml.etree.ElementTree as ET
 import simplekml
+import math
+from pydantic import BaseModel
+
+
+
 
 def get_coordinates_from_kml(kml_file_path: str, placemark_names: list):
     """
@@ -87,7 +92,11 @@ def prompt_generator(kml_path, placemarks):
       try to generate a flight plan that avoids them). 
       Always include the start and end point in your response. 
       You can generate as many waypoints as you want in order to avoid the polygons.
-      You have to stay in the fly zone. Try to find the shortest path. \n'''
+      You have to stay in the fly zone. Try to find the shortest path. Note: The 
+      shortest path is usually a straight line between the origin and the destination.
+      Here you probably need to find the closest line to this line while avoiding
+      wind hazardous areas. You may need to add more waypoints to find the shortest
+      path. \n'''
     if coordinates_dict:
         for name, coords in coordinates_dict.items():
             output += (f"Coordinates for '{name}':\n{coords}\n")
@@ -97,5 +106,36 @@ def prompt_generator(kml_path, placemarks):
 
 def convert_waypoints(waypoints):
     return [[wp.longitude, wp.latitude, wp.altitude] for wp in waypoints]
+
+# Haversine formula: returns the distance (in kilometers) between two points given in degrees.
+def haversine_distance(lat1, lon1, lat2, lon2):
+    R = 6371  # Earth's radius in kilometers
+    dLat = math.radians(lat2 - lat1)
+    dLon = math.radians(lon2 - lon1)
+    a = math.sin(dLat/2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dLon/2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+# Function to compute the total 2D path length given a list of waypoints.
+def compute_total_path_length(waypoints):
+    total_distance = 0.0
+    for i in range(1, len(waypoints)):
+        # Assume each waypoint has 'latitude' and 'longitude' attributes.
+        wp1 = waypoints[i - 1]
+        wp2 = waypoints[i]
+        distance = haversine_distance(wp1.latitude, wp1.longitude, wp2.latitude, wp2.longitude)
+        total_distance += distance
+    return total_distance
+
+
+
+class Waypoint(BaseModel):
+    latitude: float
+    longitude: float
+    altitude: float
+
+class FlightPlan(BaseModel):
+    waypoints: list[Waypoint]
+    explanation: str
 
 
