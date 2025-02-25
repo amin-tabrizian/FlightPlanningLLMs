@@ -24,7 +24,7 @@ def get_coordinates_from_kml(kml_file_path: str, placemark_names: list):
 
         # Dictionary to store results
         placemark_dict = {}
-        placemark_names += ['Origin','Destination', 'FlyZone']
+        placemark_names += ['FlyZone']
         # Search for all placemarks in the file
         for elem in root.findall(".//kml:Placemark", namespace):
             name = elem.find("kml:name", namespace)
@@ -127,6 +127,10 @@ def compute_total_path_length(waypoints):
         total_distance += distance
     return total_distance
 
+def compute_total_waypoints(waypoints):
+    return len(waypoints)
+
+
 
 
 class Waypoint(BaseModel):
@@ -137,5 +141,11 @@ class Waypoint(BaseModel):
 class FlightPlan(BaseModel):
     waypoints: list[Waypoint]
     explanation: str
+
+class Evaluation(BaseModel):
+    valid: bool
+    reasoning: str
+
+
 
 
