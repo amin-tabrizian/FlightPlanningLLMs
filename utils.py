@@ -32,7 +32,8 @@ def get_coordinates_from_kml(kml_file_path: str, placemark_names: list):
 
             if name is not None and coordinates is not None:
                 # If the name is in the requested list, store it in the dictionary
-                if name.text in placemark_names:
+                is_in_list = any([placemark in name.text for placemark in placemark_names])
+                if is_in_list:
                     placemark_dict[name.text] = coordinates.text.strip()
 
         return placemark_dict  # Return the dictionary of results
