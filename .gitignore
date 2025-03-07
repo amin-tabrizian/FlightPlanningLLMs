@@ -2,5 +2,7 @@ __pycache__/
 .vscode/
 .venv/
 *.kml
+flight_plans/
+*.txt
 test*
 !dataset.kml
