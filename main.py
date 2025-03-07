@@ -2,6 +2,9 @@ import logging
 from utils import *
 import simplekml
 from solver import response_generator
+from update_memory import update_memory
+from coach import evaluate_path_planning
+from img_generator import generate_img
 
 import argparse
 
@@ -21,6 +24,7 @@ parser.add_argument("model_name", type=str, help="Path to the input KML file")
 parser.add_argument("kml_path", type=str, help="Path to the input KML file")
 parser.add_argument("place_marks", nargs='+', help="Name of the place marks to extract")
 parser.add_argument("output_path", type=str, help="Path to save the output file")
+parser.add_argument("--image_path", type=str, help="Path to save the image")
 parser.add_argument("--log", action="store_true", help="Enable logging output")
 args = parser.parse_args()
 
@@ -68,7 +72,7 @@ if float_coordinates:
 else:
     logging.warning("No float coordinates found from KML file.")
 # Add the flight plan as a linestring to the KML
-response = response_generator(output, args.model_name)
+response = response_generator(output, args.model_name, True)
 line = polygon_kml.newlinestring(name="PolySolution", 
                                  coords=convert_waypoints(response.waypoints))
 line.style.linestyle.color = simplekml.Color.green
@@ -80,3 +84,15 @@ logging.info(f"Flight plan waypoints: {response.waypoints}")
 polygon_kml.save(args.output_path)
 logging.info(f"KML file saved to {args.output_path}.")
 logging.info("Total path length: %.2f km" % compute_total_path_length(response.waypoints))
+
+
+# Evaluate the path planning
+generate_img(float_coordinates, convert_waypoints(response.waypoints), args.image_path)
+evaluation = evaluate_path_planning(args.image_path)
+logging.info("Path planning evaluation completed.")
+logging.info(f"Evaluation: {evaluation.valid}")
+logging.info(f"Evaluation: {evaluation.reasoning}")
+logging.info(f"Evaluation: {evaluation.evaluation}")
+update_memory(float_coordinates, response.waypoints, evaluation)
+logging.info("Memory updated with evaluation results.")
+logging.info("Process completed.")

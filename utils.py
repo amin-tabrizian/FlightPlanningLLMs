@@ -32,7 +32,8 @@ def get_coordinates_from_kml(kml_file_path: str, placemark_names: list):
 
             if name is not None and coordinates is not None:
                 # If the name is in the requested list, store it in the dictionary
-                if name.text in placemark_names:
+                is_in_list = any([placemark in name.text for placemark in placemark_names])
+                if is_in_list:
                     placemark_dict[name.text] = coordinates.text.strip()
 
         return placemark_dict  # Return the dictionary of results
@@ -81,11 +82,11 @@ def prompt_generator(kml_path, placemarks):
         str: The generated prompt for the flight planner.
     """
     coordinates_dict = get_coordinates_from_kml(kml_path, placemarks)
-    output = ''
-    output += '''You are a flight planner for an eVTOL aircraft. 
+    user_msg = 'Now you have to generate a flight plan avoiding the wind polygons for the following problem: \n'
+    system_msg= '''You are a flight planner for an eVTOL aircraft. 
       The user will give you a bunch of wind hazard polygons' information
        and asks you to generate a flight plan from a start to an end point. 
-      You have the generate a flight plan which is basically a bunch of 
+      You have to generate a flight plan which is basically a bunch of 
       way points starting from the start coordinate and 
       ending in the end coordinate while avoiding the wind polygons 
       (first you have to draw the draw the polygons in your brain and 
@@ -99,10 +100,10 @@ def prompt_generator(kml_path, placemarks):
       path. \n'''
     if coordinates_dict:
         for name, coords in coordinates_dict.items():
-            output += (f"Coordinates for '{name}':\n{coords}\n")
+            user_msg += (f"Coordinates for '{name}':\n{coords}\n")
     else:
         print("No matching placemarks found in the KML file.")
-    return output
+    return [system_msg, user_msg]
 
 def convert_waypoints(waypoints):
     return [[wp.longitude, wp.latitude, wp.altitude] for wp in waypoints]
@@ -144,8 +145,16 @@ class FlightPlan(BaseModel):
 
 class Evaluation(BaseModel):
     valid: bool
+    evaluation: str
     reasoning: str
 
+# [Waypoint(latitude=32.55, longitude=-96.3, altitude=150.0),
+#  Waypoint(latitude=32.55, longitude=-97.6, altitude=150.0),
+#  Waypoint(latitude=33.0, longitude=-97.6, altitude=150.0),]
 
 
-
+# response
+# response.waypoints =  [Waypoint(latitude=32.55, longitude=-96.3, altitude=150.0),
+#  Waypoint(latitude=32.55, longitude=-97.6, altitude=150.0),
+#  Waypoint(latitude=33.0, longitude=-97.6, altitude=150.0),]
+# response.explanation = "A star method"
