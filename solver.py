@@ -23,7 +23,7 @@ def response_generator(output, model, memory):
         messages = [
                 {"role": "system", "content": system_msg + memory_prompt},
                 {"role": "user", "content":  user_msg},
-            ],
+            ]
         completion = client.beta.chat.completions.parse(
             model=model,
             messages=messages,
