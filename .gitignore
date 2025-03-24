@@ -6,3 +6,4 @@ flight_plans/
 *.txt
 test*
 !dataset.kml
+*.ipynb

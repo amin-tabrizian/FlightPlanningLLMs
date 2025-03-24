@@ -1,9 +1,10 @@
 import json
 import os
+import logging
 
 def update_memory(coords, waypoints, evaluation):
     """
-    Updates the JSON file 'memory.json' with a new evaluation entry or updates an existing one.
+    Updates the JSON file 'memory_database.json' with a new evaluation entry or updates an existing one.
     
     Parameters:
       coords (dict): Dictionary containing the coordinates. Expected keys:
@@ -22,7 +23,7 @@ def update_memory(coords, waypoints, evaluation):
     The JSON file is structured as a dictionary keyed by evaluation numbers (as strings).
     If the file doesn't exist or is empty, a new file is created.
     """
-    file_path = "memory.json"
+    file_path = "memory_database.json"
     
     # Load existing data if available, otherwise start with an empty dictionary.
     if os.path.exists(file_path):
@@ -34,9 +35,11 @@ def update_memory(coords, waypoints, evaluation):
     else:
         data = {}
     keys = list(data.keys())
+    keys = [int(key.split('evaluation_number')[-1]) for key in keys]
     keys.sort()
+    last_element = keys[-1]
     if len(keys) > 0:
-        idx = int(keys[-1][-1]) + 1
+        idx = last_element + 1
     else:
         idx = 1
     
@@ -69,3 +72,34 @@ def update_memory(coords, waypoints, evaluation):
     data.update(dict_update)
     with open(file_path, "w") as f:
         json.dump(data, f, indent=2)
+    
+
+
+def sample_from_memory(poly_name, memory_path='memory_database.json', n_samples=3):
+    try:
+        with open(memory_path, "r", encoding="utf-8") as f:
+            memory_data = json.load(f)
+        logging.info("memory_database.json loaded successfully:")
+    except FileNotFoundError:
+        memory_data = {}
+        logging.info("memory_database.json not found. Using an empty dictionary.")
+    except json.JSONDecodeError as err:
+        memory_data = {}
+        logging.info("Error decoding memory_database.json:", err)
+    
+
+    i = 0
+    polygon_of_interest = poly_name
+    key_list = []
+    for evaluation_number in sorted(memory_data.keys(), key=lambda k: int(k.split('evaluation_number')[-1]), reverse=True):
+        for polygon in memory_data[evaluation_number]['polygons']:
+            if polygon_of_interest in polygon:
+                key_list.append(evaluation_number)
+                i += 1
+                break
+        if i == n_samples:
+            break
+        
+    filtered_memory_data = {key: memory_data[key] for key in key_list}
+    with open("memory.json", "w") as f:
+        json.dump(filtered_memory_data, f, indent=2)

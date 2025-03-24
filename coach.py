@@ -71,11 +71,9 @@ def evaluate_path_planning(image_path):
                         Your output should be weather the path planning is valid or unvalid, 
                         how optimal it is if it was a valid path (evaluation in a few sentences) 
                         other wise just write INVALID and the reasoning.
-                        For optimality, think about how indirect the path is. 
+                        For optimality, think about how indirect the path is. Mention the polygon names in the reasoning.
                         Is there a more direct path that could have been taken? 
-                        The planned path is in black line. You may
-                        first run an edge detetection algorithm to filter the image
-                        and then evaluate the path. first three images are some examples.
+                        The planned path is in black line. First three images are some examples.
                         Here is the evaluation of the images:
                         
                         example 1:
