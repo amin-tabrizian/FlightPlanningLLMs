@@ -106,16 +106,35 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
     """
     coordinates_dict = convert_to_float_dict(get_coordinates_from_kml(kml_path, placemarks))
     user_msg = 'Now you have to generate a flight plan avoiding the wind polygons for the following problem: \n'
+    # system_msg = (
+    #     "You are a flight planner for an eVTOL aircraft. "
+    #     "The user will give you a few  wind hazard polygons' information "
+    #     "and asks you to generate a flight plan from a start to an end point. "
+    #     "You have to generate a flight plan which is a number of way points "
+    #     "starting from the start coordinate and ending in the end coordinate "
+    #     "while avoiding the wind polygons (first you have to draw the polygons "
+    #     "in your brain and try to generate a flight plan that avoids them)."
+    #     "Your flight plan should not intersect with the wind polygons."
+    #     "Always include the start and end point in your response. "
+    #     "You can generate as many waypoints as you want in order to avoid the polygons. "
+    #     "More waypoints will lead to a smoother flight plan. "
+    #     "You have to stay in the fly zone. You can't fly outside of the fly zone. "
+    #     "Try to find the shortest path. "
+    #     "Note: The shortest path is a straight line between the origin and the destination. "
+    #     "Here, you probably need to find the closest line to this line "
+    #     "while avoiding wind hazardous areas. "
+    #     "You may need to add more waypoints to find the shortest path.\n"
+    # )
     system_msg = (
         "You are a flight planner for an eVTOL aircraft. "
         "The user will give you a few  wind hazard polygons' information "
         "and asks you to generate a flight plan from a start to an end point. "
         "You have to generate a flight plan which is a number of way points "
-        "starting from the start coordinate and ending in the end coordinate "
+        "starting from the origin coordinate and ending in the destination coordinate "
         "while avoiding the wind polygons (first you have to draw the polygons "
         "in your brain and try to generate a flight plan that avoids them)."
         "Your flight plan should not intersect with the wind polygons."
-        "Always include the start and end point in your response. "
+        "Always include the origin and destination point in your response. "
         "You can generate as many waypoints as you want in order to avoid the polygons. "
         "More waypoints will lead to a smoother flight plan. "
         "You have to stay in the fly zone. You can't fly outside of the fly zone. "
@@ -123,7 +142,13 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
         "Note: The shortest path is a straight line between the origin and the destination. "
         "Here, you probably need to find the closest line to this line "
         "while avoiding wind hazardous areas. "
-        "You may need to add more waypoints to find the shortest path.\n"
+        "The best approach to find the optimal solution is follwing these steps: \n "
+        "1. Identify the origin and destination points.\n "
+        "2. Identify the wind hazardous areas and the fly zone.\n "
+        "3. Generate a valid waypoint between the origin and destination points that avoids the wind hazardous areas.\n "
+        "4. Update the origin to the generated waypoint and repeat the process until you reach the destination.\n "
+        "5. Ensure that the generated waypoints do not intersect with the wind hazardous areas.\n "
+        "6. Ensure that the generated waypoints stay within the fly zone.\n "
     )
     if samples:
         system_msg += sample_prompt_generator('samples.kml')

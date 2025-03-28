@@ -46,7 +46,7 @@ float_coordinates = convert_to_float_dict(coordinates_dict, approx=False)
 logging.info("Coordinates extracted and converted to float format.")
 
 # Generate prompt for flight planning
-# human_msg = "I believe the best path will go through between the wind polygon 5-1 and 5-2."
+# human_msg = "I believe the best path will between the wind polygon 5-3 and 5-1."
 human_msg = ""
 output = prompt_generator(kml_path, placemarks, human_msg, samples=False)
 logging.info("Generated prompt for flight planning.")
