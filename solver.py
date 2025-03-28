@@ -3,21 +3,26 @@ import anthropic
 import logging
 import instructor
 import json
-
+from utils import save_messages_to_file
 from utils import FlightPlan
 def response_generator(output, model, memory):
     system_msg = output[0]
     user_msg = output[1]
-
+    if model == "o3-mini":
+        model = "o3-mini-2025-01-31"
+    elif model == "claude-3-7":
+        model = "claude-3-7-sonnet-20250219"
+    elif model == "claude-3-5":
+        model = "claude-3-5-haiku-20241022"
     if memory == True:
         with open('memory.json', 'r') as json_file:
             data = json.load(json_file)
         memory_prompt = "Here are some examples of previous \
-                        Flight planning with evaluations: \n" + json.dumps(data)
+                        Flight plannings with evaluations: \n" + json.dumps(data)
     else:
         memory_prompt = ""
         logging.info("Memory is deactivated.")
-    if model == "gpt-4o" or model == "o3-mini-2025-01-31":
+    if model == "gpt-4o" or model == "o3-mini-2025-01-31" or model == "gpt-4o-mini":
         client = OpenAI()
         logging.info("Requesting flight plan from OpenAI API.")
         messages = [
@@ -31,7 +36,7 @@ def response_generator(output, model, memory):
         )
         response = completion.choices[0].message.parsed
 
-    elif model == "claude-3-5-sonnet-20241022":
+    elif model == "claude-3-7-sonnet-20250219" or model == "claude-3-5-haiku-20241022":
         client = instructor.from_anthropic(
         anthropic.Anthropic(),
         )
@@ -47,8 +52,5 @@ def response_generator(output, model, memory):
         )
     
 
-    with open("Output.txt", "w") as text_file:
-        text_file.write(str(messages))
-
-
+    save_messages_to_file(messages, "messages.txt")
     return response

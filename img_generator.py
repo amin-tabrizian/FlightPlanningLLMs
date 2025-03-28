@@ -15,6 +15,16 @@ def generate_img(coords, waypoints, name):
             # Plot polygons with yellow fill and full opacity
             polygon = Polygon(points, closed=True, facecolor='yellow', edgecolor='black', alpha=1.0)
             ax.add_patch(polygon)
+            # Calculate centroid and add label above the polygon
+            centroid_x = sum(pt[0] for pt in points) / len(points)
+            centroid_y = sum(pt[1] for pt in points) / len(points)
+            # Get maximum y-coordinate of the polygon
+            max_y = max(pt[1] for pt in points)
+            # Place label above the polygon with offset
+            label_offset = 0.05  # Adjust this value to move label up/down
+            ax.text(centroid_x, centroid_y, key, 
+                   fontsize=12, ha='center', va='bottom',
+                   bbox=dict(facecolor='white', edgecolor='none', alpha=0.7, pad=0.5))
         elif key == "FlyZone":
             # Plot the flyzone with no fill (only edges)
             flyzone = Polygon(points, closed=True, fill=False, edgecolor='red', linewidth=2)
