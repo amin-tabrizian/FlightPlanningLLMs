@@ -4,6 +4,6 @@ __pycache__/
 *.kml
 flight_plans/
 *.txt
+*.ipynb
 test*
 !dataset.kml
-*.ipynb
