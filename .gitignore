@@ -3,7 +3,7 @@ __pycache__/
 .venv/
 *.kml
 flight_plans/
-*.txt
+# *.txt
 *.ipynb
 test*
 !dataset.kml
