@@ -78,7 +78,7 @@ else:
 # Add the flight plan as a linestring to the KML
 if args.memory:
     sample_from_memory(args.place_marks[0],memory_path='memory_database.json', n_samples=5)
-response = response_generator(output, args.model_name, args.memory)
+response = response_generator(output, args.model_name, args.memory, float_coordinates)
 line = polygon_kml.newlinestring(name="PolySolution", 
                                  coords=convert_waypoints(response.waypoints))
 line.style.linestyle.color = simplekml.Color.green
