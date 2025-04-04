@@ -3,7 +3,7 @@ from utils import *
 import simplekml
 from solver import response_generator
 from update_memory import update_memory, sample_from_memory
-from coach import evaluate_path_planning
+from coach import llm_evaluation, interesection_list, rule_based_evaluation
 from img_generator import generate_img
 
 import argparse
@@ -90,11 +90,13 @@ logging.info(f"Flight plan waypoints: {response.waypoints}")
 polygon_kml.save(args.output_path)
 logging.info(f"KML file saved to {args.output_path}.")
 logging.info("Total path length: %.2f km" % compute_total_path_length(response.waypoints))
+logging.info(f"Intersections: {interesection_list(response.waypoints, float_coordinates)}")
 
 
 # Evaluate the path planning
 generate_img(float_coordinates, convert_waypoints(response.waypoints), args.image_path)
-evaluation = evaluate_path_planning(args.image_path)
+evaluation = rule_based_evaluation(response.waypoints, float_coordinates)
+evaluation = llm_evaluation(evaluation, args.image_path)
 logging.info("Path planning evaluation completed.")
 logging.info(f"Evaluation: {evaluation.valid}")
 logging.info(f"Evaluation: {evaluation.reasoning}")

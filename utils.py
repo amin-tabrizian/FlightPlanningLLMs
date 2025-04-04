@@ -129,7 +129,7 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
         "You are a flight planner for an eVTOL aircraft. "
         "The user will give you a few  wind hazard polygons' information "
         "and asks you to generate a flight plan from a start to an end point. "
-        "You have to generate a flight plan which is a number of way points "
+        "You have to generate a flight plan which is a list of way points "
         "starting from the origin coordinate and ending in the destination coordinate "
         "while avoiding the wind polygons (first you have to draw the polygons "
         "in your brain and try to generate a flight plan that avoids them)."
@@ -140,15 +140,18 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
         "You have to stay in the fly zone. You can't fly outside of the fly zone. "
         "Try to find the shortest path. "
         "Note: The shortest path is a straight line between the origin and the destination. "
-        "Here, you probably need to find the closest line to this line "
         "while avoiding wind hazardous areas. "
         "The best approach to find the optimal solution is follwing these steps: \n "
         "1. Identify the origin and destination points.\n "
         "2. Identify the wind hazardous areas and the fly zone.\n "
-        "3. Generate a valid waypoint between the origin and destination points that avoids the wind hazardous areas.\n "
+        "3. The angle between waypoints line segments should not be more than 30 degrees (reommended).\n "
+        "3. Generate a valid waypoint between the origin and destination points that avoids the wind hazardous areas (shapely.intersects() function can be used).\n "
         "4. Update the origin to the generated waypoint and repeat the process until you reach the destination.\n "
         "5. Ensure that the generated waypoints do not intersect with the wind hazardous areas.\n "
         "6. Ensure that the generated waypoints stay within the fly zone.\n "
+        "Note: If the user gave you a memory, you can try to check if the current problem is similar to the previous ones and if so, you can use the previous solutions to generate the current one."
+        "Forexample, if the previous problem is valid, you can use the same waypoints to generate the current one. Or make it more efficient. "
+        "On the other hand, if the previous problem is invalid, you can keep the previous waypoints that do not intersect with the wind polygons and change the one that intersects with the wind polygons to create a new valid solution."
     )
     if samples:
         system_msg += sample_prompt_generator('samples.kml')
@@ -162,7 +165,7 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
     return [system_msg, user_msg]
 
 def convert_waypoints(waypoints):
-    return [[wp.longitude, wp.latitude, wp.altitude] for wp in waypoints]
+    return [[wp.longitude, wp.latitude] for wp in waypoints]
 
 # Haversine formula: returns the distance (in kilometers) between two points given in degrees.
 def haversine_distance(lat1, lon1, lat2, lon2):
@@ -193,11 +196,10 @@ def compute_total_waypoints(waypoints):
 class Waypoint(BaseModel):
     latitude: float
     longitude: float
-    altitude: float
 
 class FlightPlan(BaseModel):
     waypoints: list[Waypoint]
-    explanation: str
+    # explanation: str
 
 class Evaluation(BaseModel):
     valid: bool
