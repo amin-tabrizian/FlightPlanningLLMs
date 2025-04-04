@@ -7,3 +7,4 @@ flight_plans/
 *.ipynb
 test*
 !dataset.kml
+.DS_Store
