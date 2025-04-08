@@ -14,6 +14,8 @@ from src.Airspace import Airspace
 from src.functions import displayRouteAirspace
 from src.RouteBuilding import AStar
 from utils import Waypoint  
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+import re
 from utils import convert_coordinates_to_airspace_auto  
 
 def response_generator(output, model, memory, float_coordinates):
@@ -61,7 +63,22 @@ def response_generator(output, model, memory, float_coordinates):
             messages= messages,
             response_model=FlightPlan
         )
-    
+
+    elif model == "mistral":
+        logging.info("Using Mistral open-source LLM for flight planning.")
+
+        model_id = "mistralai/Mistral-7B-Instruct-v0.2"
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
+
+        pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
+
+        prompt = f"{system_msg}\n\n{user_msg}"
+        output = pipe(prompt, max_new_tokens=1024, do_sample=True)[0]["generated_text"]
+
+        # Parse the output to extract waypoints
+        response = parse_llm_response_to_flight_plan(output)
+        
     elif model == "Astar":
         logging.info("A* has been chosen as the method.")
         response = Astar_Path(
@@ -156,3 +173,20 @@ def genAStar(start: int, goal: int, airspace: dict, ovs, speed_bounds, n_iter=10
        pass
 
     return astar
+
+def parse_llm_response_to_flight_plan(response_text: str) -> FlightPlan:
+    import re
+    from utils import Waypoint, FlightPlan
+
+    # Basic regex to extract [lon, lat, alt] coordinates
+    matches = re.findall(r'\[([-0-9.]+),\s*([-0-9.]+),\s*([-0-9.]+)\]', response_text)
+
+    waypoints = []
+    for match in matches:
+        lon, lat, alt = map(float, match)
+        waypoints.append(Waypoint(latitude=lat, longitude=lon, altitude=alt))
+
+    return FlightPlan(
+        waypoints=waypoints,
+        explanation="Parsed from Mistral response"
+    )
