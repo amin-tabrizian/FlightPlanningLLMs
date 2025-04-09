@@ -2,17 +2,50 @@ import base64
 from openai import OpenAI
 import anthropic
 import instructor
-
+import shapely
+from utils import convert_waypoints
 import logging
 from utils import Evaluation
 client = OpenAI()
 # client = anthropic.Anthropic()
 
+
+
+# Function to see if a path intersects with a polygon
+def interesection_list(waypoints, float_coordinates):
+
+    # Convert the path to a shapely LineString
+    path_coordinates = convert_waypoints(waypoints)
+    path_line = shapely.LineString(path_coordinates)
+    intersects = []
+    for polygon_name, polygon_coordinates in float_coordinates.items():
+        if 'poly' in polygon_name:
+            polygon = shapely.Polygon(polygon_coordinates)
+            if path_line.intersects(polygon):
+                intersects.append(polygon_name)
+    return intersects
+
+def rule_based_evaluation(waypoints, float_coordinates):
+    evaluation = Evaluation(valid=True, evaluation="", reasoning="")
+    # Check if the path intersects with any polygon
+    intersects = interesection_list(waypoints, float_coordinates)
+    if len(intersects) > 0:
+        evaluation.valid = False
+        evaluation.reasoning = f"The path intersects with the following polygons: {intersects}"
+        evaluation.evaluation = "INVALID"
+    else:
+        evaluation.valid = True
+        evaluation.reasoning = "The path does not intersect with any polygon."
+        evaluation.evaluation = ""
+    return evaluation
+
+    
+
 # Function to encode the image
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
-def evaluate_path_planning(image_path):
+def llm_evaluation(evaluation, image_path):
     # Getting the Base64 string
     base64_image = encode_image(image_path)
     example1 = encode_image("coach_examples/example1.jpg")
@@ -52,6 +85,7 @@ def evaluate_path_planning(image_path):
     #         ],}],
     #     response_model=Evaluation
     # )
+    
     response = client.beta.chat.completions.parse(
         model="gpt-4o-2024-11-20",
         
@@ -71,42 +105,24 @@ def evaluate_path_planning(image_path):
                         Your output should be weather the path planning is valid or unvalid, 
                         how optimal it is if it was a valid path (evaluation in a few sentences) 
                         other wise just write INVALID and the reasoning.
-                        For optimality, think about how indirect the path is. Mention the polygon names in the reasoning.
+                        For optimality, think about how indirect the path is.
                         Is there a more direct path that could have been taken? 
-                        The planned path is in black line. First three images are some examples.
-                        Here is the evaluation of the images:
-                        
-                        example 1:
-                        valid: true
-                        evaluation: the path satisfies all of the mentioned conditions. it is also very close to the straight line between origin and destination.
-                        reasoning: the path starts from origin and ends in the destination. it stays in the flyzone and avoids the yellow wind polygons.
-
-
-
-
-                        example 2:
-                        valid: false
-                        evaluation: INVALID
-                        reasoning: the path starts from the origin and ends in the destination but it intersects with one of the wind polygons. 
-
-
-                        example 3:
-                        valid: true
-                        evaluation: the path satisfies all of the mentioned criteria and is very close to the optimal path.
-                        reasoning: the path starts from the origin and ends in the destination. it is inside the fly zone (very close to the border) and also doesn’t intersect with the wind polygons.""",
+                        The planned path is in black line. The intersection of the path with the yellow wind polygons is given to you. You just
+                        need to check if the paht is in the flyzone and if it starts and ends from the origin and destination respectively. Also 
+                        see how optimal the path is. """ + f"Rule based evaluation: The path is {evaluation.valid} and the evaluation is {evaluation.reasoning}.",
                     },
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{example1}"},
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{example2}"},
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{example3}"},
-                    },
+                    # {
+                    #     "type": "image_url",
+                    #     "image_url": {"url": f"data:image/jpeg;base64,{example1}"},
+                    # },
+                    # {
+                    #     "type": "image_url",
+                    #     "image_url": {"url": f"data:image/jpeg;base64,{example2}"},
+                    # },
+                    # {
+                    #     "type": "image_url",
+                    #     "image_url": {"url": f"data:image/jpeg;base64,{example3}"},
+                    # },
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
@@ -123,3 +139,24 @@ def evaluate_path_planning(image_path):
 
 
 
+# First three images are some examples.
+#                         Here is the evaluation of the images:
+                        
+#                         example 1:
+#                         valid: true
+#                         evaluation: The path does not intersect with any polygon.
+#                         reasoning: the path starts from origin and ends in the destination. it stays in the flyzone and avoids the yellow wind polygons. It is also very close to the optimal path.
+
+
+
+
+#                         example 2:
+#                         valid: false
+#                         evaluation: INVALID
+#                         reasoning: the path starts from the origin and ends in the destination but it intersects with one of the wind polygons. 
+
+
+#                         example 3:
+#                         valid: true
+#                         evaluation: the path satisfies all of the mentioned criteria and is very close to the optimal path.
+#                         reasoning: the path starts from the origin and ends in the destination. it is inside the fly zone (very close to the border) and also doesn’t intersect with the wind polygons.
