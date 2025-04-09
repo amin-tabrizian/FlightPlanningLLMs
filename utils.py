@@ -3,6 +3,8 @@ import simplekml
 import math
 from pydantic import BaseModel
 from quadrilateral_fitter import QuadrilateralFitter
+from shapely.geometry import Polygon, Point
+from typing import Dict, List
 import datetime
 import json
 
@@ -247,6 +249,56 @@ def save_messages_to_file(messages, file_path='messages.txt'):
     except Exception as e:
         print(f"Error saving messages to file: {e}")
         return False
+
+def convert_coordinates_to_airspace_auto(
+    coordinates: Dict[str, List[List[float]]]
+) -> Dict[str, object]:
+    """
+    Converts a coordinate dictionary into an airspace dictionary.
+    Automatically finds:
+    - One FlyZone polygon
+    - One Origin (key starting with 'Origin')
+    - One Destination (key starting with 'Destination')
+    - All remaining polygons as No-Fly Zones (NFZs)
+
+    Returns:
+        dict with keys: 'airspace', 'points', 'nfzs'
+    """
+
+    airspace = {}
+
+    # 1. Fly Zone
+    if "FlyZone" not in coordinates:
+        raise ValueError("'FlyZone' key not found in coordinates.")
+    flyzone_coords = [(coord[0], coord[1]) for coord in coordinates["FlyZone"]]
+    airspace["airspace"] = [Polygon(flyzone_coords)]
+
+    # 2. Identify Origin and Destination
+    origin_key = next((k for k in coordinates if k.lower().startswith("origin")), None)
+    destination_key = next((k for k in coordinates if k.lower().startswith("destination")), None)
+
+    if origin_key is None or destination_key is None:
+        raise ValueError("Origin or Destination key not found in coordinates.")
+
+    origin_coord = coordinates[origin_key][0]
+    destination_coord = coordinates[destination_key][0]
+    airspace["points"] = [
+        Point(origin_coord[0], origin_coord[1]),
+        Point(destination_coord[0], destination_coord[1]),
+    ]
+
+    # 3. NFZs
+    nfzs = {}
+    for key, coord_list in coordinates.items():
+        if key in ["FlyZone", origin_key, destination_key]:
+            continue
+        # Assume all other keys are NFZs (e.g., poly2-1)
+        polygon_coords = [(coord[0], coord[1]) for coord in coord_list]
+        nfzs[key] = Polygon(polygon_coords)
+
+    airspace["nfzs"] = nfzs
+
+    return airspace
 
 
     
