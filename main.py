@@ -5,8 +5,10 @@ from solver import response_generator
 from update_memory import update_memory, sample_from_memory
 from coach import llm_evaluation, interesection_list, rule_based_evaluation
 from img_generator import generate_img
-
+import csv
+import os
 import argparse
+import time
 
 """
 Generates a dictionary of coordinates for the given KML file and placemark names.
@@ -27,6 +29,8 @@ parser.add_argument("output_path", type=str, help="Path to save the output file"
 parser.add_argument("--image_path", type=str, help="Path to save the image")
 parser.add_argument("--log", action="store_true", help="Enable logging output")
 parser.add_argument("--memory", action="store_true", help="Enable memory")
+parser.add_argument("--report_file", type=str, help="Report file path")
+# parser.add_argument("--coach", action="store_true", help="use coach agent to evaluate the planning")
 
 args = parser.parse_args()
 
@@ -78,7 +82,9 @@ else:
 # Add the flight plan as a linestring to the KML
 if args.memory:
     sample_from_memory(args.place_marks[0],memory_path='memory_database.json', n_samples=5)
+start_time = time.time()
 response = response_generator(output, args.model_name, args.memory, float_coordinates)
+end_time = time.time()
 line = polygon_kml.newlinestring(name="PolySolution", 
                                  coords=convert_waypoints(response.waypoints))
 line.style.linestyle.color = simplekml.Color.green
@@ -89,7 +95,8 @@ logging.info("Added polyline for flight plan.")
 logging.info(f"Flight plan waypoints: {response.waypoints}")
 polygon_kml.save(args.output_path)
 logging.info(f"KML file saved to {args.output_path}.")
-logging.info("Total path length: %.2f km" % compute_total_path_length(response.waypoints))
+total_length = compute_total_path_length(response.waypoints)
+logging.info("Total path length: %.2f km" % total_length)
 logging.info(f"Intersections: {interesection_list(response.waypoints, float_coordinates)}")
 
 
@@ -124,3 +131,40 @@ if user_input == "N":
 
 
 logging.info("Process completed.")
+solution = PlannerSolution()
+solution.core_metrics["distance_km"] = total_length
+if interesection_list:
+    avoid_polygons = False
+else:
+    avoid_polygons = True
+solution.core_metrics = {"distance_km": total_length,       
+                            "num_waypoints": len(response.waypoints),      
+                            "response_time_s": end_time - start_time,   
+                            "energy": 0.0,           
+                            "is_valid": evaluation.valid,        
+                            "orig_dest": True,       
+                            "fly_zone": True,        
+                            "avoid_polygons": avoid_polygons,  
+                            "model": args.model_name,
+                            "mode": mode_detector(args.place_marks),              
+                            "memory": args.memory,    
+                            "coach": False}   
+        
+
+
+if args.report_file:
+    # Create the report file path
+    report_dir = os.path.dirname(args.report_file)
+    if report_dir and not os.path.exists(report_dir):
+        os.makedirs(report_dir)
+    
+    # Check if file exists to determine if we need to write headers
+    file_exists = os.path.isfile(args.report_file)
+    
+    # Write to CSV file
+    with open(args.report_file, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=solution.core_metrics.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(solution.core_metrics)
+    logging.info(f"Core metrics written to {args.report_file}")

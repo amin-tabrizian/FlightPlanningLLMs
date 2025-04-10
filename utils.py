@@ -208,6 +208,21 @@ class Evaluation(BaseModel):
     evaluation: str
     reasoning: str
 
+class PlannerSolution():
+    def __init__(self):
+        self.core_metrics = {"distance_km": 0.0,       # Flight plan distance in kilometers
+                            "num_waypoints": 0,       # Number of waypoints
+                            "response_time_s": 0.0,   # LLM response time in seconds
+                            "energy": 0.0,
+                            "is_valid": True,         # Count of valid plans
+                            "orig_dest": True,  # Ratio of flight path to shortest possible path
+                            "fly_zone": True,
+                            "avoid_polygons": True,
+                            "model": "",
+                            "mode": "",
+                            "memory": False,
+                            "coach": False}
+
 def sample_prompt_generator(kml_path='samples.kml', n_samples=3):
     prompt = 'Here are some samples of the flight plans for a particular wind hazardous area: \n'
     # sol-e3-origin1-destination3, sol-e1-origin4-destination2, sol-e2-origin5-destination3
@@ -300,5 +315,18 @@ def convert_coordinates_to_airspace_auto(
 
     return airspace
 
+def mode_detector(place_marks):
+    poly_name = place_marks[0]
+    poly_number = int(poly_name[4])
+    print(poly_number)
+    if poly_number <= 3 and poly_number >= 1:
+        return 'easy'
+    elif poly_number <= 6:
+        return 'medium'
+    elif poly_number <= 9: 
+        return 'hard'
+    else:
+        return 'N/A'
+    
 
     

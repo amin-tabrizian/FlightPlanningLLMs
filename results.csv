@@ -1,0 +1,5 @@
+distance_km,num_waypoints,response_time_s,energy,is_valid,orig_dest,fly_zone,avoid_polygons,model,mode,memory,coach
+235.15719018388884,17,23.25514316558838,0.0,True,True,True,False,Astar,easy,False,False
+255.06872545342821,10,3.7195520401000977,0.0,False,True,True,False,claude-3-7,easy,False,False
+234.9227930332552,8,2.9010732173919678,0.0,False,True,True,False,gpt-4o,easy,False,False
+248.39532437461088,10,76.88000345230103,0.0,True,True,True,False,o3-mini,easy,False,False
