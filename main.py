@@ -30,6 +30,7 @@ parser.add_argument("--image_path", type=str, help="Path to save the image")
 parser.add_argument("--log", action="store_true", help="Enable logging output")
 parser.add_argument("--memory", action="store_true", help="Enable memory")
 parser.add_argument("--report_file", type=str, help="Report file path")
+parser.add_argument("--human_preference", type=str, help="Human preference for flight planning" )
 # parser.add_argument("--coach", action="store_true", help="use coach agent to evaluate the planning")
 
 args = parser.parse_args()
@@ -51,8 +52,8 @@ logging.info("Coordinates extracted and converted to float format.")
 
 # Generate prompt for flight planning
 # human_msg = "I believe the best path will between the wind polygon 5-3 and 5-1."
-human_msg = ""
-output = prompt_generator(kml_path, placemarks, human_msg, samples=False)
+human_msg = args.human_preference if args.human_preference else ""
+prompt = prompt_generator(kml_path, placemarks, human_msg, samples=False)
 logging.info("Generated prompt for flight planning.")
 
 # Set up the OpenAI client and define data models for the flight plan
@@ -81,74 +82,66 @@ else:
     logging.warning("No float coordinates found from KML file.")
 # Add the flight plan as a linestring to the KML
 if args.memory:
-    sample_from_memory(args.place_marks[0],memory_path='memory_database.json', n_samples=5)
+    sample_from_memory(args.place_marks[0],memory_path='memory_database.json', n_samples=2)
 start_time = time.time()
-response = response_generator(output, args.model_name, args.memory, float_coordinates)
+response = response_generator(prompt, args.model_name, args.memory, float_coordinates)
+logging.info(f"Response waypoints are {response.waypoints}")
+waypoints_list = convert_waypoints(response.waypoints)
 end_time = time.time()
 line = polygon_kml.newlinestring(name="PolySolution", 
-                                 coords=convert_waypoints(response.waypoints))
+                                 coords=waypoints_list)
 line.style.linestyle.color = simplekml.Color.green
 line.style.linestyle.width = 5
 logging.info("Added polyline for flight plan.")
 
 # Output the flight plan waypoints and save the KML file
-logging.info(f"Flight plan waypoints: {response.waypoints}")
+logging.info(f"Flight plan waypoints: {waypoints_list}")
 polygon_kml.save(args.output_path)
 logging.info(f"KML file saved to {args.output_path}.")
 total_length = compute_total_path_length(response.waypoints)
 logging.info("Total path length: %.2f km" % total_length)
-logging.info(f"Intersections: {interesection_list(response.waypoints, float_coordinates)}")
 
 
 # Evaluate the path planning
-generate_img(float_coordinates, convert_waypoints(response.waypoints), args.image_path)
-evaluation = rule_based_evaluation(response.waypoints, float_coordinates)
-evaluation = llm_evaluation(evaluation, args.image_path)
+evaluation = rule_based_evaluation(waypoints_list, float_coordinates)
+generate_img(float_coordinates, waypoints_list, args.image_path, evaluation)
+logging.info(f"Polygons that are intersected: {evaluation.polys}")
+# evaluation = llm_evaluation(evaluation, args.image_path)
 logging.info("Path planning evaluation completed.")
-logging.info(f"Evaluation: {evaluation.valid}")
-logging.info(f"Evaluation: {evaluation.reasoning}")
-logging.info(f"Evaluation: {evaluation.evaluation}")
-logging.info(f"Evaluation: Is the evaluation valid? (Y/N)")
-user_input = input()
-if user_input == "Y":
-    update_memory(float_coordinates, response.waypoints, evaluation)
-    logging.info("Memory updated with evaluation results.")
-    
-if user_input == "N":
-    logging.info("Do you want to chagent the evaluation?")
-    user_input = input()
-    if user_input == "Y":
-        logging.info("Please provide the new evaluation (valid).")
-        evaluation.valid = input()
-        logging.info("Please provide the new evaluation (reasoning).")
-        evaluation.reasoning = input()
-        logging.info("Please provide the new evaluation (evaluation).")
-        evaluation.evaluation = input()
-        logging.info("Memory updated with evaluation results.")
-        update_memory(float_coordinates, response.waypoints, evaluation)
-    if user_input == "N":
-        logging.info("Memory not updated.")
+logging.info(f"Valid or not?: {evaluation.valid}")
+logging.info(f"Is in flyzone: {evaluation.out_pts}")
+logging.info(f"Starts with origin and ends in destination: {evaluation.orig_dest_ok}")
+logging.info(f"Any comments about the solution?")
+evaluation.human_review = input()
+
+
+
+update_memory(float_coordinates, response.waypoints, evaluation)
+logging.info("Memory updated with evaluation results.")
 
 
 logging.info("Process completed.")
+if evaluation.human_review == "":
+    evaluation.human_review = "True"
+else:
+    evaluation.human_review = "False"
 solution = PlannerSolution()
 solution.core_metrics["distance_km"] = total_length
-if interesection_list:
-    avoid_polygons = False
-else:
-    avoid_polygons = True
 solution.core_metrics = {"distance_km": total_length,       
                             "num_waypoints": len(response.waypoints),      
                             "response_time_s": end_time - start_time,   
                             "energy": 0.0,           
                             "is_valid": evaluation.valid,        
-                            "orig_dest": True,       
-                            "fly_zone": True,        
-                            "avoid_polygons": avoid_polygons,  
+                            "orig_dest": evaluation.orig_dest_ok,       
+                            "fly_zone": evaluation.out_pts,        
+                            "avoid_polygons": evaluation.polys,  
                             "model": args.model_name,
                             "mode": mode_detector(args.place_marks),              
-                            "memory": args.memory,    
-                            "coach": False}   
+                            "memory": args.memory,
+                            "solution_waypoints": response.waypoints,    
+                           "human_preference": args.human_preference,
+                           "orig_dest": [args.place_marks[1], args.place_marks[2]],
+                           "aligned_with_human_preference": evaluation.human_review}   
         
 
 

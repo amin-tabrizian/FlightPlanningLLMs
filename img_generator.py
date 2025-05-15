@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 
-def generate_img(coords, waypoints, name):
+def generate_img(coords, waypoints, name, evaluation):
     data = coords
     data['sol'] = waypoints
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -27,7 +27,7 @@ def generate_img(coords, waypoints, name):
                    bbox=dict(facecolor='white', edgecolor='none', alpha=0.7, pad=0.5))
         elif key == "FlyZone":
             # Plot the flyzone with no fill (only edges)
-            flyzone = Polygon(points, closed=True, fill=False, edgecolor='red', linewidth=2)
+            flyzone = Polygon(points, closed=True, fill=False, edgecolor='green', linewidth=2)
             ax.add_patch(flyzone)
         elif "Origin" in key:
             # Plot the origin as a point and label it
@@ -44,6 +44,26 @@ def generate_img(coords, waypoints, name):
             x = [pt[0] for pt in points]
             y = [pt[1] for pt in points]
             ax.plot(x, y, color='black', linewidth=3)
+            x_violating = []
+            y_violating = []
+            for line_segments in evaluation.segs:
+                for line in line_segments:
+                    start_waypoint = line[0]
+                    end_waypoint = line[1]
+                    x_violating.append(start_waypoint[0])
+                    x_violating.append(end_waypoint[0])
+                    y_violating.append(start_waypoint[1])
+                    y_violating.append(end_waypoint[1])
+            # for line in evaluation.violating_waypoints:
+            #     for point in line:
+            #         if x - point[0] < 1e-2 and y - point[1] < 1e-2:
+            #             ax.plot(x, y, color='red', linewidth=3)
+            # else:
+            
+            ax.plot(x_violating, y_violating, color='red', linewidth=3)
+            for wp in evaluation.out_pts:
+                ax.plot(wp.x, wp.y, marker='o', color='red', markersize=6)
+
 
     # Set plot limits, labels, and title for clarity
     ax.set_xlabel('Longitude')
