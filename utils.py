@@ -31,7 +31,8 @@ def get_coordinates_from_kml(kml_file_path: str, placemark_names: list):
 
         # Dictionary to store results
         placemark_dict = {}
-        placemark_names += ['FlyZone']
+        placemark_names = placemark_names + ['FlyZone'] if 'FlyZone' not in placemark_names \
+                        else placemark_names
         # Search for all placemarks in the file
         for elem in root.findall(".//kml:Placemark", namespace):
             name = elem.find("kml:name", namespace)
@@ -76,7 +77,7 @@ def convert_to_float_dict(coord_dict, approx=False):
             # Split the coordinate string into individual numbers
             numbers = coord.split(',')
             # Convert first two numbers (lon, lat) to float
-            float_coord = [float(numbers[0]), float(numbers[1])]
+            float_coord = [round(float(numbers[0]), 2), round(float(numbers[1]), 2)]
             # Add to the list of coordinates
             float_coords.append(float_coord)
 
@@ -106,6 +107,7 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
     Returns:
         str: The generated prompt for the flight planner.
     """
+    human_msg = "Human preference: \n" + human_msg + " \n" if human_msg else ""
     coordinates_dict = convert_to_float_dict(get_coordinates_from_kml(kml_path, placemarks))
     user_msg = 'Now you have to generate a flight plan avoiding the wind polygons for the following problem: \n'
     # system_msg = (
@@ -120,7 +122,7 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
     #     "Always include the start and end point in your response. "
     #     "You can generate as many waypoints as you want in order to avoid the polygons. "
     #     "More waypoints will lead to a smoother flight plan. "
-    #     "You have to stay in the fly zone. You can't fly outside of the fly zone. "
+    #     "You have to stay in the flyzone. You can't fly outside of the flyzone. "
     #     "Try to find the shortest path. "
     #     "Note: The shortest path is a straight line between the origin and the destination. "
     #     "Here, you probably need to find the closest line to this line "
@@ -129,48 +131,65 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
     # )
     system_msg = (
         "You are a flight planner for an eVTOL aircraft. "
-        "The user will give you a few  wind hazard polygons' information "
-        "and asks you to generate a flight plan from a start to an end point. "
-        "You have to generate a flight plan which is a list of way points "
+        "The user will give you a few wind hazard polygons' information "
+        "and asks you to generate a flight plan from an origin to a destination. "
+        "You have to generate a flight plan which is a list of waypoints "
         "starting from the origin coordinate and ending in the destination coordinate "
-        "while avoiding the wind polygons (first you have to draw the polygons "
-        "in your brain and try to generate a flight plan that avoids them)."
-        "Your flight plan should not intersect with the wind polygons."
+        "while avoiding the wind polygons. "
         "Always include the origin and destination point in your response. "
         "You can generate as many waypoints as you want in order to avoid the polygons. "
         "More waypoints will lead to a smoother flight plan. "
-        "You have to stay in the fly zone. You can't fly outside of the fly zone. "
-        "Try to find the shortest path. "
-        "Note: The shortest path is a straight line between the origin and the destination. "
+        "You can't fly outside of the flyzone. "
+        "Try to find the shortest path "
         "while avoiding wind hazardous areas. "
-        "The best approach to find the optimal solution is follwing these steps: \n "
-        "1. Identify the origin and destination points.\n "
-        "2. Identify the wind hazardous areas and the fly zone.\n "
-        "3. The angle between waypoints line segments should not be more than 30 degrees (reommended).\n "
-        "3. Generate a valid waypoint between the origin and destination points that avoids the wind hazardous areas (shapely.intersects() function can be used).\n "
-        "4. Update the origin to the generated waypoint and repeat the process until you reach the destination.\n "
-        "5. Ensure that the generated waypoints do not intersect with the wind hazardous areas.\n "
-        "6. Ensure that the generated waypoints stay within the fly zone.\n "
-        "Note: If the user gave you a memory, you can try to check if the current problem is similar to the previous ones and if so, you can use the previous solutions to generate the current one."
-        "Forexample, if the previous problem is valid, you can use the same waypoints to generate the current one. Or make it more efficient. "
-        "On the other hand, if the previous problem is invalid, you can keep the previous waypoints that do not intersect with the wind polygons and change the one that intersects with the wind polygons to create a new valid solution."
+        "Note: The shortest path is a straight line between the origin and the destination."
+        "The best approach to find the optimal solution is following these steps: \n"
+        "1. Identify the origin and the destination points.\n"
+        "2. Identify the wind hazard polygons and the flyzone.\n"
+        "3. IMPORTANT STEP: Generate waypoints that connect origin to the destination while avoiding wind polygons and are in flyzone (they shouldn't be in on the flyzone's border). You may generate more waypoints near the wind polygons to ensure line segments connecting them do not intersect with the polygons. You should generate waypoints that make the flight plan aligned with the human preference.\n" 
+        "4. The line segments connecting the waypoints should NOT have sharp angles (reommended).\n "
+        "5. Ensure that the line segments connecting the waypoints do not intersect with the wind hazard polygons.\n "
+        "6. If any of the line segments intersect with the polygons modify the corrosponding waypoints. "
+        "Note: If the user gave you a memory, you should do the following: "
+        "1. Check if the previous solution is VALID and ALIGNED with the human preference. "
+        "If so, you can use it as a reference to generate a new solution or make it better. "
+        "2. If the previous solution is not valid, "
+        "look at the violating segments and the points outside the flyzone of the previous solution "
+        "and propose new waypoints to replace them. Pay attention to the human preference. "
+        "3. If the previous solution is valid but not aligned with the human preference, "
+        " check human review in the memory and try to resolve their comments in your new solution."
     )
     if samples:
         system_msg += sample_prompt_generator('samples.kml')
     
     if coordinates_dict:
+        orig_dest_mssg = ""
         for name, coords in coordinates_dict.items():
-            user_msg += (f"Coordinates for '{name}':\n{coords}\n")
+            if 'Origin' in name or 'Dest' in name:
+                orig_dest_mssg += (f"Coordinates for '{name}': {coords} \n")
+                continue
+            user_msg += (f"Coordinates for '{name}': {coords} \n")
     else:
         print("No matching placemarks found in the KML file.")
+    user_msg += orig_dest_mssg
     user_msg += human_msg
+    # user_msg += "Human preference: \n" + human_msg + " \n" if human_msg else ""
     return [system_msg, user_msg]
 
 def convert_waypoints(waypoints):
-    return [[wp.longitude, wp.latitude] for wp in waypoints]
+    wp = waypoints[0]
+    if wp.longitude > 0:
+        return [[wp.latitude, wp.longitude] for wp in waypoints]
+    else:
+        return [[wp.longitude, wp.latitude] for wp in waypoints]
 
 # Haversine formula: returns the distance (in kilometers) between two points given in degrees.
-def haversine_distance(lat1, lon1, lat2, lon2):
+def haversine_distance(point1, point2):
+    lat1 = point1[0]
+    lat2 = point2[0]
+
+    lon1 = point1[1]
+    lon2 = point2[1]
     R = 6371  # Earth's radius in kilometers
     dLat = math.radians(lat2 - lat1)
     dLon = math.radians(lon2 - lon1)
@@ -181,11 +200,12 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 # Function to compute the total 2D path length given a list of waypoints.
 def compute_total_path_length(waypoints):
     total_distance = 0.0
+    waypoints = convert_waypoints(waypoints)
     for i in range(1, len(waypoints)):
         # Assume each waypoint has 'latitude' and 'longitude' attributes.
         wp1 = waypoints[i - 1]
         wp2 = waypoints[i]
-        distance = haversine_distance(wp1.latitude, wp1.longitude, wp2.latitude, wp2.longitude)
+        distance = haversine_distance(wp1, wp2)
         total_distance += distance
     return total_distance
 
@@ -201,12 +221,15 @@ class Waypoint(BaseModel):
 
 class FlightPlan(BaseModel):
     waypoints: list[Waypoint]
-    # explanation: str
+    explanation: str
 
 class Evaluation(BaseModel):
     valid: bool
-    evaluation: str
-    reasoning: str
+    polys: list[str]
+    segs: list[str]
+    orig_dest_ok: list[bool]
+    out_pts: list[str]
+    human_review: str
 
 class PlannerSolution():
     def __init__(self):
@@ -221,7 +244,9 @@ class PlannerSolution():
                             "model": "",
                             "mode": "",
                             "memory": False,
-                            "coach": False}
+                            "solution_waypoints": [],
+                            "human_preference": "",
+                            "orig_dest": []}
 
 def sample_prompt_generator(kml_path='samples.kml', n_samples=3):
     prompt = 'Here are some samples of the flight plans for a particular wind hazardous area: \n'
@@ -257,8 +282,12 @@ def save_messages_to_file(messages, file_path='messages.txt'):
     try:
         with open(file_path, 'a') as file:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
             file.write(f"=== {timestamp} ===\n")
-            file.write(f"MSG: {messages}\n\n")
+            file.write(f"System messages: \n")
+            file.write(f"MSG: {messages[0]['content']} \n")
+            file.write(f"User messages: \n")
+            file.write(f"MSG: {messages[1]['content']}\n\n")
             file.write("-" * 50 + "\n\n")
         return True
     except Exception as e:
@@ -285,7 +314,7 @@ def convert_coordinates_to_airspace_auto(
     # 1. Fly Zone
     if "FlyZone" not in coordinates:
         raise ValueError("'FlyZone' key not found in coordinates.")
-    flyzone_coords = [(coord[0], coord[1]) for coord in coordinates["FlyZone"]]
+    flyzone_coords = [(coord[1], coord[0]) for coord in coordinates["FlyZone"]]
     airspace["airspace"] = [Polygon(flyzone_coords)]
 
     # 2. Identify Origin and Destination
@@ -296,7 +325,9 @@ def convert_coordinates_to_airspace_auto(
         raise ValueError("Origin or Destination key not found in coordinates.")
 
     origin_coord = coordinates[origin_key][0]
+    origin_coord = [origin_coord[1], origin_coord[0]]
     destination_coord = coordinates[destination_key][0]
+    destination_coord = [destination_coord[1], destination_coord[0]]
     airspace["points"] = [
         Point(origin_coord[0], origin_coord[1]),
         Point(destination_coord[0], destination_coord[1]),
@@ -308,7 +339,7 @@ def convert_coordinates_to_airspace_auto(
         if key in ["FlyZone", origin_key, destination_key]:
             continue
         # Assume all other keys are NFZs (e.g., poly2-1)
-        polygon_coords = [(coord[0], coord[1]) for coord in coord_list]
+        polygon_coords = [(coord[1], coord[0]) for coord in coord_list]
         nfzs[key] = Polygon(polygon_coords)
 
     airspace["nfzs"] = nfzs
@@ -320,13 +351,49 @@ def mode_detector(place_marks):
     poly_number = int(poly_name[4])
     print(poly_number)
     if poly_number <= 3 and poly_number >= 1:
-        return 'easy'
+        return 'Hard'
     elif poly_number <= 6:
-        return 'medium'
+        return 'Medium'
     elif poly_number <= 9: 
-        return 'hard'
+        return 'Easy'
     else:
         return 'N/A'
     
+
+
+def generate_natural_language_review(json_file_path, raw=False):
+    with open(json_file_path, 'r') as file:
+        data = json.load(file)
+    if raw:
+        return json.dumps(data, indent=2)
+    reviews = []
+    for eval_key, eval_data in data.items():
+        review = f"Review for {eval_key}:\n"
+        review += f"- The solution involves waypoints: {eval_data['solution_waypoints']}.\n"
+
+        if not eval_data['valid']:
+            review += "- The path is **invalid** due to the following issues:\n"
+            if eval_data.get('violated_polygons'):
+                review += f"  - It intersects restricted polygons: {', '.join(eval_data['violated_polygons'])}.\n"
+            if eval_data.get('violating_segments'):
+                review += f"  - Violating segment(s): {', '.join(str(segment) for segment in eval_data['violating_segments'])}.\n"
+        else:
+            review += "- The path is valid.\n"
+
+        if eval_data.get('waypoints_outside_flyzone'):
+            review += f"- Some waypoints fall outside the flyzone: {eval_data['waypoints_outside_flyzone']}.\n"
+        if eval_data.get('human_review'):
+            review += f"- Human review: {eval_data['human_review']}\n"
+
+        origin_valid, dest_valid = eval_data['in_origin_dest']
+        review += f"- The origin is {'within' if origin_valid else 'outside'} the allowed region.\n"
+        review += f"- The destination is {'within' if dest_valid else 'outside'} the allowed region.\n"
+
+        if eval_data.get('optimality'):
+            review += f"- Optimality note: {eval_data['optimality']}\n"
+
+        reviews.append(review.strip())
+
+    return "\n\n".join(reviews)
 
     

@@ -1,8 +1,9 @@
 import json
 import os
 import logging
+from utils import Evaluation, convert_waypoints
 
-def update_memory(coords, waypoints, evaluation):
+def update_memory(coords, waypoints, evaluation: Evaluation):
     """
     Updates the JSON file 'memory_database.json' with a new evaluation entry or updates an existing one.
     
@@ -37,8 +38,9 @@ def update_memory(coords, waypoints, evaluation):
     keys = list(data.keys())
     keys = [int(key.split('evaluation_number')[-1]) for key in keys]
     keys.sort()
-    last_element = keys[-1]
+    
     if len(keys) > 0:
+        last_element = keys[-1]
         idx = last_element + 1
     else:
         idx = 1
@@ -48,25 +50,31 @@ def update_memory(coords, waypoints, evaluation):
     
     dict_update = {
         "evaluation_number" + str(idx):
-        {"polygons": {},
-        "origin": 0,
-        "destination": 0,
-        "flyzone": 0,
-        "waypoints": str(waypoints),
+        {"polygons": '',
+        # "origin": 0,
+        # "destination": 0,
+        # "flyzone": 0,
+        "solution_waypoints": str(convert_waypoints(waypoints)),
         "valid": evaluation.valid,
-        "evaluation": evaluation.evaluation,
-        "reasoning": evaluation.reasoning}
+        "violated_polygons": evaluation.polys,
+        "violating_segments": evaluation.segs,
+        "in_origin_dest": evaluation.orig_dest_ok,
+        "waypoints_outside_flyzone": evaluation.out_pts,
+        "human_review": evaluation.human_review
+        # "optimality": evaluation.optimality
+        }
     }
-
+    polygon_added = False
     for place_mark in place_marks:
-        if 'poly' in place_mark:
-            dict_update["evaluation_number" + str(idx)]['polygons'].update({place_mark: coords.get(place_mark)})
-        elif 'Origin' in place_mark:
-            dict_update["evaluation_number" + str(idx)]['origin'] = coords.get(place_mark)
-        elif 'Destination' in place_mark:
-            dict_update["evaluation_number" + str(idx)]['destination'] = coords.get(place_mark)
-        elif 'FlyZone' in place_mark:
-            dict_update["evaluation_number" + str(idx)]['flyzone'] = coords.get(place_mark)
+        if 'poly' in place_mark and not polygon_added:
+            dict_update["evaluation_number" + str(idx)]['polygons'] = place_mark[:5]
+            polygon_added = True
+        # elif 'Origin' in place_mark:
+        #     dict_update["evaluation_number" + str(idx)]['origin'] = coords.get(place_mark)
+        # elif 'Destination' in place_mark:
+            # dict_update["evaluation_number" + str(idx)]['destination'] = coords.get(place_mark)
+        # elif 'FlyZone' in place_mark:
+        #     dict_update["evaluation_number" + str(idx)]['flyzone'] = coords.get(place_mark)
     
     # Write the updated data back to the JSON file.
     data.update(dict_update)
@@ -89,17 +97,17 @@ def sample_from_memory(poly_name, memory_path='memory_database.json', n_samples=
     
 
     i = 0
-    polygon_of_interest = poly_name
+    polygon_of_interest = poly_name[0:5]
     key_list = []
     for evaluation_number in sorted(memory_data.keys(), key=lambda k: int(k.split('evaluation_number')[-1]), reverse=True):
-        for polygon in memory_data[evaluation_number]['polygons']:
-            if polygon_of_interest in polygon:
-                key_list.append(evaluation_number)
-                i += 1
-                break
+        if polygon_of_interest == memory_data[evaluation_number]['polygons']:
+            key_list.append(evaluation_number)
+            i += 1
         if i == n_samples:
             break
         
     filtered_memory_data = {key: memory_data[key] for key in key_list}
     with open("memory.json", "w") as f:
         json.dump(filtered_memory_data, f, indent=2)
+
+

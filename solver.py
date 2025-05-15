@@ -3,7 +3,7 @@ import anthropic
 import logging
 import instructor
 import json
-from utils import save_messages_to_file
+from utils import save_messages_to_file, convert_waypoints
 from utils import FlightPlan
 from typing import Dict, List
 from pathlib import Path
@@ -14,11 +14,12 @@ from src.Airspace import Airspace
 from src.functions import displayRouteAirspace
 from src.RouteBuilding import AStar
 from utils import Waypoint  
-from utils import convert_coordinates_to_airspace_auto  
+from utils import convert_coordinates_to_airspace_auto, generate_natural_language_review
+from coach import rule_based_evaluation
 
-def response_generator(output, model, memory, float_coordinates):
-    system_msg = output[0]
-    user_msg = output[1]
+def response_generator(input, model, memory, float_coordinates):
+    system_msg = input[0]
+    user_msg = input[1]
     if model == "o3-mini":
         model = "o3-mini-2025-01-31"
     elif model == "claude-3-7":
@@ -26,19 +27,16 @@ def response_generator(output, model, memory, float_coordinates):
     elif model == "claude-3-5":
         model = "claude-3-5-haiku-20241022"
     if memory == True:
-        with open('memory.json', 'r') as json_file:
-            data = json.load(json_file)
-        memory_prompt = "Here are some examples of previous \
-                        Flight plannings with evaluations: \n" + json.dumps(data)
+        memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review('memory.json', raw=True)
     else:
         memory_prompt = ""
         logging.info("Memory is deactivated.")
-    if model == "gpt-4o" or model == "o3-mini-2025-01-31" or model == "gpt-4o-mini":
+    if model == "gpt-4o" or model == "o3-mini-2025-01-31" or model == "gpt-4o-mini" or model == "o4-mini":
         client = OpenAI()
         logging.info("Requesting flight plan from OpenAI API.")
         messages = [
-                {"role": "system", "content": system_msg + memory_prompt},
-                {"role": "user", "content":  user_msg},
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content":  user_msg + memory_prompt},
             ]
         completion = client.beta.chat.completions.parse(
             model=model,
@@ -56,6 +54,7 @@ def response_generator(output, model, memory, float_coordinates):
                 {"role": "system", "content": system_msg + memory_prompt},
                 {"role": "user", "content":  user_msg},]
         response = client.chat.completions.create(
+            temperature = 0.0,
             max_tokens=1024,
             model=model,
             messages= messages,
@@ -81,6 +80,56 @@ def response_generator(output, model, memory, float_coordinates):
     
     return response
 
+def try_next_attempts(input, previous_output, review, model, float_coordinates, attempt_number= 0, number_of_attempts=3):
+    while attempt_number < number_of_attempts:
+        system_msg = input[0]
+        user_msg = input[1]
+        user_msg += (f"This is your previous response which is invalid. \n {previous_output}"
+                      f"The reason for the invalidity is: {review} "
+                    )
+        if model == "o3-mini":
+            model = "o3-mini-2025-01-31"
+        elif model == "claude-3-7":
+            model = "claude-3-7-sonnet-20250219"
+        elif model == "claude-3-5":
+            model = "claude-3-5-haiku-20241022"
+        if model == "gpt-4o" or model == "o3-mini-2025-01-31" or model == "gpt-4o-mini":
+            client = OpenAI()
+            logging.info("Requesting flight plan from OpenAI API.")
+            messages = [
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content":  user_msg},
+                ]
+            completion = client.beta.chat.completions.parse(
+                model=model,
+                messages=messages,
+                response_format=FlightPlan,
+            )
+            response = completion.choices[0].message.parsed
+
+        elif model == "claude-3-7-sonnet-20250219" or model == "claude-3-5-haiku-20241022":
+            client = instructor.from_anthropic(
+            anthropic.Anthropic(),
+            )
+            logging.info("Requesting flight plan from Anthropic API.")
+            messages = [
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content":  user_msg},]
+            response = client.chat.completions.create(
+                max_tokens=1024,
+                model=model,
+                messages= messages,
+                response_model=FlightPlan
+            )
+        evaluation = rule_based_evaluation(convert_waypoints(response.waypoints), float_coordinates)
+        if not evaluation.intesects:
+            review = generate_nl_review(evaluation)
+        else:
+            return response
+        try_next_attempts(input, response, review, model, float_coordinates, attempt_number + 1, number_of_attempts)
+        
+
+    raise Exception("No valid path generated.")
 
 def Astar_Path(
     coordinates: Dict[str, List[List[float]]],
@@ -156,3 +205,4 @@ def genAStar(start: int, goal: int, airspace: dict, ovs, speed_bounds, n_iter=10
        pass
 
     return astar
+
