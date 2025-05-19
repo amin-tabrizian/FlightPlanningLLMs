@@ -2,7 +2,6 @@ __pycache__/
 .vscode/
 .venv/
 *.kml
-flight_plans/
 # *.txt
 *.ipynb
 test*

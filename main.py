@@ -31,6 +31,7 @@ parser.add_argument("--log", action="store_true", help="Enable logging output")
 parser.add_argument("--memory", action="store_true", help="Enable memory")
 parser.add_argument("--report_file", type=str, help="Report file path")
 parser.add_argument("--human_preference", type=str, help="Human preference for flight planning" )
+parser.add_argument("--system_message", type=str, help="System message for flight planning" )
 # parser.add_argument("--coach", action="store_true", help="use coach agent to evaluate the planning")
 
 args = parser.parse_args()
@@ -53,7 +54,7 @@ logging.info("Coordinates extracted and converted to float format.")
 # Generate prompt for flight planning
 # human_msg = "I believe the best path will between the wind polygon 5-3 and 5-1."
 human_msg = args.human_preference if args.human_preference else ""
-prompt = prompt_generator(kml_path, placemarks, human_msg, samples=False)
+prompt = prompt_generator(kml_path, placemarks, human_msg, samples=False, system_message = args.system_message)
 logging.info("Generated prompt for flight planning.")
 
 # Set up the OpenAI client and define data models for the flight plan
@@ -111,8 +112,8 @@ logging.info("Path planning evaluation completed.")
 logging.info(f"Valid or not?: {evaluation.valid}")
 logging.info(f"Is in flyzone: {evaluation.out_pts}")
 logging.info(f"Starts with origin and ends in destination: {evaluation.orig_dest_ok}")
-logging.info(f"Any comments about the solution?")
-evaluation.human_review = input()
+# logging.info(f"Any comments about the solution?")
+# evaluation.human_review = input()
 
 
 
@@ -138,7 +139,8 @@ solution.core_metrics = {"distance_km": total_length,
                             "model": args.model_name,
                             "mode": mode_detector(args.place_marks),              
                             "memory": args.memory,
-                            "solution_waypoints": response.waypoints,    
+                            "solution_waypoints": response.waypoints, 
+                            "polygon_number": args.place_marks[0],   
                            "human_preference": args.human_preference,
                            "orig_dest": [args.place_marks[1], args.place_marks[2]],
                            "aligned_with_human_preference": evaluation.human_review}   

@@ -27,7 +27,7 @@ def response_generator(input, model, memory, float_coordinates):
     elif model == "claude-3-5":
         model = "claude-3-5-haiku-20241022"
     if memory == True:
-        memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review('memory.json', raw=True)
+        memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review('memory.json')
     else:
         memory_prompt = ""
         logging.info("Memory is deactivated.")
@@ -42,9 +42,12 @@ def response_generator(input, model, memory, float_coordinates):
             model=model,
             messages=messages,
             response_format=FlightPlan,
+            # temperature=0.0000001,
+            seed=12345,
+            # top_p=0.00000001,
         )
+        logging.info(f"System fingerprint is {completion.system_fingerprint}")
         response = completion.choices[0].message.parsed
-
     elif model == "claude-3-7-sonnet-20250219" or model == "claude-3-5-haiku-20241022":
         client = instructor.from_anthropic(
         anthropic.Anthropic(),
@@ -54,7 +57,7 @@ def response_generator(input, model, memory, float_coordinates):
                 {"role": "system", "content": system_msg + memory_prompt},
                 {"role": "user", "content":  user_msg},]
         response = client.chat.completions.create(
-            temperature = 0.0,
+
             max_tokens=1024,
             model=model,
             messages= messages,
@@ -104,6 +107,8 @@ def try_next_attempts(input, previous_output, review, model, float_coordinates, 
                 model=model,
                 messages=messages,
                 response_format=FlightPlan,
+                temperature=0,
+                seed=12345,
             )
             response = completion.choices[0].message.parsed
 

@@ -1,3 +1,4 @@
 distance_km,num_waypoints,response_time_s,energy,is_valid,orig_dest,fly_zone,avoid_polygons,model,mode,memory
 270.9199806720178,5,3.591667652130127,0.0,False,True,True,True,gpt-4o,Hard,False
 267.96234068254176,5,1.813934087753296,0.0,False,True,True,True,gpt-4o,Hard,False
+193.81244319505805,8,57.23071885108948,0.0,False,"['Origin1', 'Destination5']",[],['poly1-2'],o3-mini,Hard,False,"[Waypoint(latitude=33.36, longitude=-97.97), Waypoint(latitude=33.45, longitude=-97.8), Waypoint(latitude=33.45, longitude=-97.4), Waypoint(latitude=33.42, longitude=-97.0), Waypoint(latitude=33.44, longitude=-96.7), Waypoint(latitude=33.2, longitude=-96.5), Waypoint(latitude=32.6, longitude=-96.4), Waypoint(latitude=32.57, longitude=-96.25)]",poly1,Find the shortest path,True

@@ -96,7 +96,7 @@ def convert_to_float_dict(coord_dict, approx=False):
     return float_dict
 
 
-def prompt_generator(kml_path, placemarks, human_msg, samples = False):
+def prompt_generator(kml_path, placemarks, human_msg, samples = False, system_message = ""):
     """
     Generates a prompt for the flight planner based on KML file and placemark names.
 
@@ -129,38 +129,37 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
     #     "while avoiding wind hazardous areas. "
     #     "You may need to add more waypoints to find the shortest path.\n"
     # )
-    system_msg = (
-        "You are a flight planner for an eVTOL aircraft. "
-        "The user will give you a few wind hazard polygons' information "
-        "and asks you to generate a flight plan from an origin to a destination. "
-        "You have to generate a flight plan which is a list of waypoints "
-        "starting from the origin coordinate and ending in the destination coordinate "
-        "while avoiding the wind polygons. "
-        "Always include the origin and destination point in your response. "
-        "You can generate as many waypoints as you want in order to avoid the polygons. "
-        "More waypoints will lead to a smoother flight plan. "
-        "You can't fly outside of the flyzone. "
-        "Try to find the shortest path "
-        "while avoiding wind hazardous areas. "
-        "Note: The shortest path is a straight line between the origin and the destination."
-        "The best approach to find the optimal solution is following these steps: \n"
-        "1. Identify the origin and the destination points.\n"
-        "2. Identify the wind hazard polygons and the flyzone.\n"
-        "3. IMPORTANT STEP: Generate waypoints that connect origin to the destination while avoiding wind polygons and are in flyzone (they shouldn't be in on the flyzone's border). You may generate more waypoints near the wind polygons to ensure line segments connecting them do not intersect with the polygons. You should generate waypoints that make the flight plan aligned with the human preference.\n" 
-        "4. The line segments connecting the waypoints should NOT have sharp angles (reommended).\n "
-        "5. Ensure that the line segments connecting the waypoints do not intersect with the wind hazard polygons.\n "
-        "6. If any of the line segments intersect with the polygons modify the corrosponding waypoints. "
-        "Note: If the user gave you a memory, you should do the following: "
-        "1. Check if the previous solution is VALID and ALIGNED with the human preference. "
-        "If so, you can use it as a reference to generate a new solution or make it better. "
-        "2. If the previous solution is not valid, "
-        "look at the violating segments and the points outside the flyzone of the previous solution "
-        "and propose new waypoints to replace them. Pay attention to the human preference. "
-        "3. If the previous solution is valid but not aligned with the human preference, "
-        " check human review in the memory and try to resolve their comments in your new solution."
-    )
-    if samples:
-        system_msg += sample_prompt_generator('samples.kml')
+    # system_msg = (
+    #     "You are a flight planner for an eVTOL aircraft. "
+    #     "The user will give you a few wind hazard polygons' information "
+    #     "and asks you to generate a flight plan from an origin to a destination. "
+    #     "You have to generate a flight plan which is a list of waypoints "
+    #     "starting from the origin coordinate and ending in the destination coordinate "
+    #     "while avoiding the wind polygons. "
+    #     "Always include the origin and destination point in your response. "
+    #     "You can generate as many waypoints as you want in order to avoid the polygons. "
+    #     "More waypoints will lead to a smoother flight plan. "
+    #     "You can't fly outside of the flyzone. "
+    #     "Try to find the shortest path "
+    #     "while avoiding wind hazardous areas. "
+    #     "Note: The shortest path is a straight line between the origin and the destination."
+    #     "The best approach to find the optimal solution is following these steps: \n"
+    #     "1. Identify the origin and the destination points.\n"
+    #     "2. Identify the wind hazard polygons and the flyzone.\n"
+    #     "3. IMPORTANT STEP: Generate waypoints that connect origin to the destination while avoiding wind polygons and are in flyzone (they shouldn't be in on the flyzone's border). You may generate more waypoints near the wind polygons to ensure line segments connecting them do not intersect with the polygons. You should generate waypoints that make the flight plan aligned with the human preference.\n" 
+    #     "4. The line segments connecting the waypoints should NOT have sharp angles (reommended).\n "
+    #     "5. Ensure that the line segments connecting the waypoints do not intersect with the wind hazard polygons.\n "
+    #     "6. If any of the line segments intersect with the polygons modify the corrosponding waypoints. "
+    #     "Note: If the user gave you a memory, you should do the following: "
+    #     "1. Check if the previous solution is VALID and ALIGNED with the human preference. "
+    #     "If so, you can use it as a reference to generate a new solution or make it better. "
+    #     "2. If the previous solution is not valid, "
+    #     "look at the violating segments and the points outside the flyzone of the previous solution "
+    #     "and propose new waypoints to replace them. Pay attention to the human preference. "
+    #     "3. If the previous solution is valid but not aligned with the human preference, "
+    #     " check human review in the memory and try to resolve their comments in your new solution."
+    # )
+
     
     if coordinates_dict:
         orig_dest_mssg = ""
@@ -173,8 +172,27 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
         print("No matching placemarks found in the KML file.")
     user_msg += orig_dest_mssg
     user_msg += human_msg
+    system_msg = load_system_message(system_message)
     # user_msg += "Human preference: \n" + human_msg + " \n" if human_msg else ""
     return [system_msg, user_msg]
+def load_system_message(user_key: str) -> str:
+    """
+    Load a system message from the 'prompts_no_memory.json' file based on the provided user key.
+
+    Args:
+        user_key (str): The key corresponding to the desired system message.
+
+    Returns:
+        str: The system message if found, otherwise an empty string.
+    """
+    import json
+    try:
+        with open("prompts_no_memory.json", "r") as file:
+            messages = json.load(file)
+        return messages.get(user_key, "")
+    except Exception as e:
+        print(f"Error loading system message for key '{user_key}': {e}")
+        return ""
 
 def convert_waypoints(waypoints):
     wp = waypoints[0]
@@ -243,6 +261,7 @@ class PlannerSolution():
                             "avoid_polygons": True,
                             "model": "",
                             "mode": "",
+                            "polygon_number": 0,
                             "memory": False,
                             "solution_waypoints": [],
                             "human_preference": "",
