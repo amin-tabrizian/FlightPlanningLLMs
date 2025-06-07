@@ -1,4 +1,6 @@
-# LLM-based Flgiht Planning with Multimodal Feedback
+# Can LLMs Plan Flights from Scratch? A Chain-of-Thought Approach for Human-Centric Planning
+
+
 This project is about using different LLMs for generating flight plans in wind hazardous areas. 
 
 ## How the Code Works
