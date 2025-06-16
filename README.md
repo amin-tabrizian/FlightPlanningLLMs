@@ -1,7 +1,6 @@
 # Chain-of-Thought Flight Planner: End-to-End LLM Routing under Wind Hazards
 
-This project is about using different LLMs for generating flight plans in wind hazardous areas. 
-
+Recent advances in LLMs have opened new possibilities for automating complex planning tasks through natural language dialogue and reasoning. In this paper, we introduce a human-centric flight planning framework that leverages an LLM with CoT prompting to generate flight plans under wind hazard constraints. Our approach keeps a human operator ``in-the-loop'' by eliciting their preferences via natural language and producing recommended flight plans aligned with these preferences. We integrate five different prompting strategies with a custom LLM to assess their impact on planning valid rates and alignment with operator intent. Simulation experiments are conducted on nine wind hazard scenarios (categorized by difficulty) in an advanced air mobility context. We evaluate each method in terms of plan feasibility (safety and constraint satisfaction) and how well the LLM’s output matches the stated human preferences. The results demonstrate a 98\% valid rate on average for the best prompting strategy and their alignment with operator goals. This work is among the first to apply LLM-based CoT reasoning for autonomous flight route planning in an end-to-end manner and highlights the potential of human-centered AI in future aviation applications. 
 ![Sample generated image.](media/sample.jpg)
 
 
