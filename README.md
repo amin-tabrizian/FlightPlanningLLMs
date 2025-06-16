@@ -3,13 +3,7 @@
 
 This project is about using different LLMs for generating flight plans in wind hazardous areas. 
 
-## How the Code Works
-
-At first, the dataset file will be scanned and the place marks of interest will be extracted. Then a prompt will be generated from past experiences (short term memory + the current problem), and an LLM model will do the flight planning. The LLM response will be parsed to another kml file and an image of the flight scene will be plotted for coach agent.
-
 ![Sample generated image.](media/sample.jpg)
-
-After the image is stored, a coach agent which is another LLM will evaluate the planning and store its response in a short term memory file. 
 
 
 ## Run
