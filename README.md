@@ -1,5 +1,4 @@
-# Can LLMs Plan Flights from Scratch? A Chain-of-Thought Approach for Human-Centric Planning
-
+# Chain-of-Thought Flight Planner: End-to-End LLM Routing under Wind Hazards
 
 This project is about using different LLMs for generating flight plans in wind hazardous areas. 
 
