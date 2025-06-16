@@ -70,7 +70,8 @@ def generate_img(coords, waypoints, name, evaluation):
     # Set plot limits, labels, and title for clarity
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
-    ax.set_title('2D Plot of Polygons, FlyZone, Origin, and Destination')
+    # ax.set_title('2D Plot of Polygons, FlyZone, Origin, and Destination')
+    ax.set_title(name)
 
     # Optionally, adjust the axis limits based on the data ranges
     ax.set_xlim(-98.5, -95.5)

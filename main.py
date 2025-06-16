@@ -99,8 +99,9 @@ logging.info("Added polyline for flight plan.")
 logging.info(f"Flight plan waypoints: {waypoints_list}")
 polygon_kml.save(args.output_path)
 logging.info(f"KML file saved to {args.output_path}.")
-total_length = compute_total_path_length(response.waypoints)
+total_length = compute_total_path_length(convert_waypoints(response.waypoints))
 logging.info("Total path length: %.2f km" % total_length)
+logging.info(f"Reasoning: {response.explanation}")
 
 
 # Evaluate the path planning

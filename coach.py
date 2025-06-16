@@ -45,7 +45,7 @@ def origin_dest_verifyer(waypoints, float_coordinates):
 def interesection_list(waypoints, float_coordinates):
     # Convert the path to a shapely LineString
     path_coordinates = waypoints
-    i = 1
+    i = 0
     intersects = dict()
     while i < len(path_coordinates) - 1:
         path_line = shapely.LineString(waypoints[i:i+2])

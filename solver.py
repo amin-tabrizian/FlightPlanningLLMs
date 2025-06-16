@@ -17,6 +17,22 @@ from utils import Waypoint
 from utils import convert_coordinates_to_airspace_auto, generate_natural_language_review
 from coach import rule_based_evaluation
 
+def batch_response_generator(batch_path='batch.jsonl', description="Test"):
+    client = OpenAI()
+    batch_input_file = client.files.create(
+    file=open(batch_path, "rb"),
+    purpose="batch",
+    )
+    batch_input_file_id = batch_input_file.id
+    batch = client.batches.create(
+        input_file_id=batch_input_file_id,
+        endpoint="/v1/chat/completions",
+        completion_window="24h",
+        metadata={
+            "description": description
+        }
+    )
+    return batch
 def response_generator(input, model, memory, float_coordinates):
     system_msg = input[0]
     user_msg = input[1]
@@ -185,7 +201,7 @@ def Astar_Path(
 
     return flight_plan
 
-def genAStar(start: int, goal: int, airspace: dict, ovs, speed_bounds, n_iter=10000, dist=15000, show_plots=True):
+def genAStar(start: int, goal: int, airspace: dict, ovs, speed_bounds, n_iter=100000, dist=12000, show_plots=True):
     offset = np.random.poisson(lam=5) * 20
 
     found = False
