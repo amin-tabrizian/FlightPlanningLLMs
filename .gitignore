@@ -2,9 +2,12 @@ __pycache__/
 .vscode/
 .venv/
 *.kml
-flight_plans/
-# *.txt
+*.txt
 *.ipynb
 test*
 !dataset.kml
 .DS_Store
+*.csv
+coach_example/
+*batch*
+*memory*

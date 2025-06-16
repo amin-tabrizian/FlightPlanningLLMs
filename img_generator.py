@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
-
+import logging
 def generate_img(coords, waypoints, name, evaluation):
     data = coords
     data['sol'] = waypoints
@@ -61,14 +61,17 @@ def generate_img(coords, waypoints, name, evaluation):
             # else:
             
             ax.plot(x_violating, y_violating, color='red', linewidth=3)
-            for wp in evaluation.out_pts:
-                ax.plot(wp.x, wp.y, marker='o', color='red', markersize=6)
+            if evaluation.out_pts:
+                for wp in evaluation.out_pts:
+                    logging.info(f"Waypoint outside flyzone: {wp}")
+                    ax.plot(wp[0], wp[1], marker='o', color='red', markersize=6)
 
 
     # Set plot limits, labels, and title for clarity
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
-    ax.set_title('2D Plot of Polygons, FlyZone, Origin, and Destination')
+    # ax.set_title('2D Plot of Polygons, FlyZone, Origin, and Destination')
+    ax.set_title(name)
 
     # Optionally, adjust the axis limits based on the data ranges
     ax.set_xlim(-98.5, -95.5)

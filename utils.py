@@ -7,7 +7,7 @@ from shapely.geometry import Polygon, Point
 from typing import Dict, List
 import datetime
 import json
-
+from typing import List, Tuple
 
  
 
@@ -96,7 +96,7 @@ def convert_to_float_dict(coord_dict, approx=False):
     return float_dict
 
 
-def prompt_generator(kml_path, placemarks, human_msg, samples = False):
+def prompt_generator(kml_path, placemarks, human_msg, samples = False, system_message = ""):
     """
     Generates a prompt for the flight planner based on KML file and placemark names.
 
@@ -129,38 +129,37 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
     #     "while avoiding wind hazardous areas. "
     #     "You may need to add more waypoints to find the shortest path.\n"
     # )
-    system_msg = (
-        "You are a flight planner for an eVTOL aircraft. "
-        "The user will give you a few wind hazard polygons' information "
-        "and asks you to generate a flight plan from an origin to a destination. "
-        "You have to generate a flight plan which is a list of waypoints "
-        "starting from the origin coordinate and ending in the destination coordinate "
-        "while avoiding the wind polygons. "
-        "Always include the origin and destination point in your response. "
-        "You can generate as many waypoints as you want in order to avoid the polygons. "
-        "More waypoints will lead to a smoother flight plan. "
-        "You can't fly outside of the flyzone. "
-        "Try to find the shortest path "
-        "while avoiding wind hazardous areas. "
-        "Note: The shortest path is a straight line between the origin and the destination."
-        "The best approach to find the optimal solution is following these steps: \n"
-        "1. Identify the origin and the destination points.\n"
-        "2. Identify the wind hazard polygons and the flyzone.\n"
-        "3. IMPORTANT STEP: Generate waypoints that connect origin to the destination while avoiding wind polygons and are in flyzone (they shouldn't be in on the flyzone's border). You may generate more waypoints near the wind polygons to ensure line segments connecting them do not intersect with the polygons. You should generate waypoints that make the flight plan aligned with the human preference.\n" 
-        "4. The line segments connecting the waypoints should NOT have sharp angles (reommended).\n "
-        "5. Ensure that the line segments connecting the waypoints do not intersect with the wind hazard polygons.\n "
-        "6. If any of the line segments intersect with the polygons modify the corrosponding waypoints. "
-        "Note: If the user gave you a memory, you should do the following: "
-        "1. Check if the previous solution is VALID and ALIGNED with the human preference. "
-        "If so, you can use it as a reference to generate a new solution or make it better. "
-        "2. If the previous solution is not valid, "
-        "look at the violating segments and the points outside the flyzone of the previous solution "
-        "and propose new waypoints to replace them. Pay attention to the human preference. "
-        "3. If the previous solution is valid but not aligned with the human preference, "
-        " check human review in the memory and try to resolve their comments in your new solution."
-    )
-    if samples:
-        system_msg += sample_prompt_generator('samples.kml')
+    # system_msg = (
+    #     "You are a flight planner for an eVTOL aircraft. "
+    #     "The user will give you a few wind hazard polygons' information "
+    #     "and asks you to generate a flight plan from an origin to a destination. "
+    #     "You have to generate a flight plan which is a list of waypoints "
+    #     "starting from the origin coordinate and ending in the destination coordinate "
+    #     "while avoiding the wind polygons. "
+    #     "Always include the origin and destination point in your response. "
+    #     "You can generate as many waypoints as you want in order to avoid the polygons. "
+    #     "More waypoints will lead to a smoother flight plan. "
+    #     "You can't fly outside of the flyzone. "
+    #     "Try to find the shortest path "
+    #     "while avoiding wind hazardous areas. "
+    #     "Note: The shortest path is a straight line between the origin and the destination."
+    #     "The best approach to find the optimal solution is following these steps: \n"
+    #     "1. Identify the origin and the destination points.\n"
+    #     "2. Identify the wind hazard polygons and the flyzone.\n"
+    #     "3. IMPORTANT STEP: Generate waypoints that connect origin to the destination while avoiding wind polygons and are in flyzone (they shouldn't be in on the flyzone's border). You may generate more waypoints near the wind polygons to ensure line segments connecting them do not intersect with the polygons. You should generate waypoints that make the flight plan aligned with the human preference.\n" 
+    #     "4. The line segments connecting the waypoints should NOT have sharp angles (reommended).\n "
+    #     "5. Ensure that the line segments connecting the waypoints do not intersect with the wind hazard polygons.\n "
+    #     "6. If any of the line segments intersect with the polygons modify the corrosponding waypoints. "
+    #     "Note: If the user gave you a memory, you should do the following: "
+    #     "1. Check if the previous solution is VALID and ALIGNED with the human preference. "
+    #     "If so, you can use it as a reference to generate a new solution or make it better. "
+    #     "2. If the previous solution is not valid, "
+    #     "look at the violating segments and the points outside the flyzone of the previous solution "
+    #     "and propose new waypoints to replace them. Pay attention to the human preference. "
+    #     "3. If the previous solution is valid but not aligned with the human preference, "
+    #     " check human review in the memory and try to resolve their comments in your new solution."
+    # )
+
     
     if coordinates_dict:
         orig_dest_mssg = ""
@@ -173,8 +172,27 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False):
         print("No matching placemarks found in the KML file.")
     user_msg += orig_dest_mssg
     user_msg += human_msg
+    system_msg = load_system_message(system_message)
     # user_msg += "Human preference: \n" + human_msg + " \n" if human_msg else ""
     return [system_msg, user_msg]
+def load_system_message(user_key: str) -> str:
+    """
+    Load a system message from the 'prompts_no_memory.json' file based on the provided user key.
+
+    Args:
+        user_key (str): The key corresponding to the desired system message.
+
+    Returns:
+        str: The system message if found, otherwise an empty string.
+    """
+    import json
+    try:
+        with open("prompts_no_memory.json", "r") as file:
+            messages = json.load(file)
+        return messages.get(user_key, "")
+    except Exception as e:
+        print(f"Error loading system message for key '{user_key}': {e}")
+        return ""
 
 def convert_waypoints(waypoints):
     wp = waypoints[0]
@@ -182,6 +200,11 @@ def convert_waypoints(waypoints):
         return [[wp.latitude, wp.longitude] for wp in waypoints]
     else:
         return [[wp.longitude, wp.latitude] for wp in waypoints]
+def convert_dict_to_list_waypoints(waypoints):
+    if waypoints[0]['longitude'] > 0:
+        return [[waypoint['latitude'], waypoint['longitude']] for waypoint in waypoints]
+    else:
+        return [[waypoint['longitude'], waypoint['latitude']] for waypoint in waypoints]
 
 # Haversine formula: returns the distance (in kilometers) between two points given in degrees.
 def haversine_distance(point1, point2):
@@ -200,7 +223,6 @@ def haversine_distance(point1, point2):
 # Function to compute the total 2D path length given a list of waypoints.
 def compute_total_path_length(waypoints):
     total_distance = 0.0
-    waypoints = convert_waypoints(waypoints)
     for i in range(1, len(waypoints)):
         # Assume each waypoint has 'latitude' and 'longitude' attributes.
         wp1 = waypoints[i - 1]
@@ -243,6 +265,7 @@ class PlannerSolution():
                             "avoid_polygons": True,
                             "model": "",
                             "mode": "",
+                            "polygon_number": 0,
                             "memory": False,
                             "solution_waypoints": [],
                             "human_preference": "",
@@ -314,7 +337,7 @@ def convert_coordinates_to_airspace_auto(
     # 1. Fly Zone
     if "FlyZone" not in coordinates:
         raise ValueError("'FlyZone' key not found in coordinates.")
-    flyzone_coords = [(coord[1], coord[0]) for coord in coordinates["FlyZone"]]
+    flyzone_coords = [(coord[0], coord[1]) for coord in coordinates["FlyZone"]]
     airspace["airspace"] = [Polygon(flyzone_coords)]
 
     # 2. Identify Origin and Destination
@@ -325,9 +348,9 @@ def convert_coordinates_to_airspace_auto(
         raise ValueError("Origin or Destination key not found in coordinates.")
 
     origin_coord = coordinates[origin_key][0]
-    origin_coord = [origin_coord[1], origin_coord[0]]
+    origin_coord = [origin_coord[0], origin_coord[1]]
     destination_coord = coordinates[destination_key][0]
-    destination_coord = [destination_coord[1], destination_coord[0]]
+    destination_coord = [destination_coord[0], destination_coord[1]]
     airspace["points"] = [
         Point(origin_coord[0], origin_coord[1]),
         Point(destination_coord[0], destination_coord[1]),
@@ -339,7 +362,7 @@ def convert_coordinates_to_airspace_auto(
         if key in ["FlyZone", origin_key, destination_key]:
             continue
         # Assume all other keys are NFZs (e.g., poly2-1)
-        polygon_coords = [(coord[1], coord[0]) for coord in coord_list]
+        polygon_coords = [(coord[0], coord[1]) for coord in coord_list]
         nfzs[key] = Polygon(polygon_coords)
 
     airspace["nfzs"] = nfzs
@@ -397,3 +420,123 @@ def generate_natural_language_review(json_file_path, raw=False):
     return "\n\n".join(reviews)
 
     
+    
+def add_batch_entry(system_messages: str, user_message: str, custom_id: str = "request-1") -> None:
+    """
+    Add a new entry to batch.jsonl file with the specified system and user messages.
+    
+    Args:
+        system_messages (str): The system messages to include in the request
+        user_message (str): The user message to include in the request
+        custom_id (str, optional): The custom ID for the request. Defaults to "request-1".
+    """
+    entry = {
+        "custom_id": custom_id,
+        "method": "POST",
+        "url": "/v1/chat/completions",
+        "body": {
+            "model": "o4-mini-2025-04-16",
+            "messages": [
+                {"role": "system", "content": system_messages},
+                {"role": "user", "content": user_message}
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "flight_plan_response",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "waypoints": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "latitude": {"type": "number"},
+                                        "longitude": {"type": "number"}
+                                    },
+                                    "required": ["latitude", "longitude"],
+                                    "additionalProperties": False
+                                }
+                            },
+                            "explanation": {"type": "string"}
+                        },
+                        "required": ["waypoints", "explanation"],
+                        "additionalProperties": False
+                    }
+                }
+            }
+        }
+    }
+    
+    with open("batch.jsonl", "a") as f:
+        f.write(json.dumps(entry, separators=(',', ':')) + "\n")
+    
+
+
+def compute_smoothness(waypoints: List[Tuple[float, float]]) -> float:
+    """
+    Compute the smoothness of a flight plan, normalized by the angle
+    between the origin→destination vector and a horizontal line.
+
+    waypoints: list of (lon, lat) pairs, e.g.
+        [[-97.97, 33.36], [-97.97, 33.45], [-96.26, 33.45], [-96.26, 33.42]]
+
+    Returns
+    -------
+    smoothness = sum(theta_i^2) / theta_base^2
+
+    - theta_i = acos( (v_i · v_{i+1}) / (||v_i|| * ||v_{i+1}||) )
+      for each turn between consecutive legs.
+    - v_i = vector from waypoint i to i+1.
+    - theta_base = acos( x_od / sqrt(x_od^2 + y_od^2) ),
+      the angle between the origin→destination vector and the horizontal axis.
+
+    Notes
+    -----
+    - If fewer than 3 waypoints, returns 0.0 (no turns).
+    - If the origin–destination vector is exactly vertical (x_od == 0),
+      theta_base = π/2, so the denominator is nonzero.
+    - If the origin–destination vector is exactly horizontal (y_od == 0),
+      theta_base = 0 and the function returns float('inf').
+    """
+    n = len(waypoints)
+    if n < 3:
+        return 1
+
+    # build segment vectors v_i = p_{i+1} - p_i
+    vecs = [
+        (waypoints[i+1][0] - waypoints[i][0],
+         waypoints[i+1][1] - waypoints[i][1])
+        for i in range(n-1)
+    ]
+
+    # sum of squared turning angles
+    sum_sq = 0.0
+    for (x1, y1), (x2, y2) in zip(vecs, vecs[1:]):
+        norm1 = math.hypot(x1, y1)
+        norm2 = math.hypot(x2, y2)
+        if norm1 == 0 or norm2 == 0:
+            continue
+        dot = x1*x2 + y1*y2
+        cosang = max(-1.0, min(1.0, dot / (norm1*norm2)))
+        theta = math.acos(cosang)
+        sum_sq += abs(theta)*abs(theta)
+
+    # origin→destination vector
+    x_od = waypoints[-1][0] - waypoints[0][0]
+    y_od = waypoints[-1][1] - waypoints[0][1]
+    dist_od = math.hypot(x_od, y_od)
+
+    # angle between that vector and horizontal axis
+    if dist_od == 0:
+        return float('inf')
+    # clamp for numerical safety
+    cos_base = max(-1.0, min(1.0, x_od / dist_od))
+    theta_base = math.acos(cos_base)
+
+    if abs(theta_base) < 1e-12:
+        return float('inf')
+    if sum_sq == 0:
+        return float('inf')
+    return (abs(theta_base) * abs(theta_base)) / sum_sq 

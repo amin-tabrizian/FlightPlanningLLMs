@@ -196,13 +196,6 @@ class AStar:
         import matplotlib.pyplot as plt
         print("TYPE OF BOUNDS:", type(self.bounds))  # should be Polygon
 
-        plt.plot(*self.bounds.exterior.coords.xy)
-        for nfz in self.nfzs:
-            plt.plot(*nfz.exterior.coords.xy, c="red")
-        plt.scatter(start[0], start[1], c="green")
-        plt.scatter(goal[0], goal[1], c="blue")
-        plt.show()
-
         # print(self.bounds, self.nfzs, start, goal)
 
         self.goal = goal

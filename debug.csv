@@ -1,3 +1,0 @@
-distance_km,num_waypoints,response_time_s,energy,is_valid,orig_dest,fly_zone,avoid_polygons,model,mode,memory
-270.9199806720178,5,3.591667652130127,0.0,False,True,True,True,gpt-4o,Hard,False
-267.96234068254176,5,1.813934087753296,0.0,False,True,True,True,gpt-4o,Hard,False
