@@ -1,7 +1,7 @@
 {
-  "evaluation_number19": {
-    "polygons": "poly9",
-    "solution_waypoints": "[[-97.97, 32.89], [-97.7, 33.1], [-97.3, 33.45], [-96.5, 33.45], [-96.25, 33.02]]",
+  "evaluation_number5": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.97, 32.6], [-96.25, 32.57]]",
     "valid": true,
     "violated_polygons": [],
     "violating_segments": [],
@@ -10,11 +10,12 @@
       true
     ],
     "waypoints_outside_flyzone": [],
-    "human_review": "The path is not aligned with the human preference. The shortest path should go to the south of poly9-1 and above poly9-2"
+    "human_review": "This is valid but not optimal. The shortest distance would be diagonal. ",
+    "human_msg": "Find the shortest path"
   },
-  "evaluation_number18": {
-    "polygons": "poly9",
-    "solution_waypoints": "[[-97.97, 32.89], [-97.7, 33.1], [-97.3, 33.45], [-96.5, 33.45], [-96.25, 33.02]]",
+  "evaluation_number4": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.7, 33.44], [-96.9, 33.44], [-96.4, 33.44], [-96.4, 33.1], [-96.25, 32.57]]",
     "valid": true,
     "violated_polygons": [],
     "violating_segments": [],
@@ -23,6 +24,7 @@
       true
     ],
     "waypoints_outside_flyzone": [],
-    "human_review": "The optimal path is olmost direct and will go between poly9-1 and poly9-2"
+    "human_review": "",
+    "human_msg": "Find the shortest path"
   }
 }

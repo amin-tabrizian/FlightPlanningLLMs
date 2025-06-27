@@ -8,6 +8,8 @@ from typing import Dict, List
 import datetime
 import json
 from typing import List, Tuple
+from shapely.geometry import LineString, Polygon
+
 
  
 
@@ -107,7 +109,7 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False, system_me
     Returns:
         str: The generated prompt for the flight planner.
     """
-    human_msg = "Human preference: \n" + human_msg + " \n" if human_msg else ""
+    human_msg = "Human preference: \n" + human_msg + human_msg + human_msg + " \n" if human_msg else ""
     coordinates_dict = convert_to_float_dict(get_coordinates_from_kml(kml_path, placemarks))
     user_msg = 'Now you have to generate a flight plan avoiding the wind polygons for the following problem: \n'
     # system_msg = (
@@ -540,3 +542,20 @@ def compute_smoothness(waypoints: List[Tuple[float, float]]) -> float:
     if sum_sq == 0:
         return float('inf')
     return (abs(theta_base) * abs(theta_base)) / sum_sq 
+
+def greedy_merge(waypoints, float_coordinates):
+    simplified_path = [waypoints[0]]
+    obstacles = []
+    for place_mark, polygon_coordinates in float_coordinates.items():
+        if 'poly' in place_mark:
+             obstacles.append(Polygon(polygon_coordinates))
+    i = 0
+    while i < len(waypoints) - 1:
+        # Try to jump as far ahead as possible
+        for j in range(len(waypoints)-1, i, -1):
+            candidate_line = LineString([waypoints[i], waypoints[j]])
+            if not any(candidate_line.intersects(poly) for poly in obstacles):
+                simplified_path.append(waypoints[j])
+                i = j
+                break
+    return simplified_path

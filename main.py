@@ -32,7 +32,7 @@ parser.add_argument("--memory", action="store_true", help="Enable memory")
 parser.add_argument("--report_file", type=str, help="Report file path")
 parser.add_argument("--human_preference", type=str, help="Human preference for flight planning" )
 parser.add_argument("--system_message", type=str, help="System message for flight planning" )
-# parser.add_argument("--coach", action="store_true", help="use coach agent to evaluate the planning")
+parser.add_argument("--coach", action="store_true", help="use coach agent to evaluate the planning")
 
 args = parser.parse_args()
 
@@ -86,8 +86,8 @@ if args.memory:
     sample_from_memory(args.place_marks[0],memory_path='memory_database.json', n_samples=2)
 start_time = time.time()
 response = response_generator(prompt, args.model_name, args.memory, float_coordinates)
-logging.info(f"Response waypoints are {response.waypoints}")
 waypoints_list = convert_waypoints(response.waypoints)
+# simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
 end_time = time.time()
 line = polygon_kml.newlinestring(name="PolySolution", 
                                  coords=waypoints_list)
@@ -107,18 +107,19 @@ logging.info(f"Reasoning: {response.explanation}")
 # Evaluate the path planning
 evaluation = rule_based_evaluation(waypoints_list, float_coordinates)
 generate_img(float_coordinates, waypoints_list, args.image_path, evaluation)
+# generate_img(float_coordinates, simplified_waypoints, 'flight_plans/simplified_waypoints.png', evaluation)
 logging.info(f"Polygons that are intersected: {evaluation.polys}")
 # evaluation = llm_evaluation(evaluation, args.image_path)
 logging.info("Path planning evaluation completed.")
 logging.info(f"Valid or not?: {evaluation.valid}")
 logging.info(f"Is in flyzone: {evaluation.out_pts}")
 logging.info(f"Starts with origin and ends in destination: {evaluation.orig_dest_ok}")
-# logging.info(f"Any comments about the solution?")
-# evaluation.human_review = input()
+logging.info(f"Any comments about the solution?")
+evaluation.human_review = input()
 
 
 
-update_memory(float_coordinates, response.waypoints, evaluation)
+update_memory(float_coordinates, response.waypoints, evaluation, human_msg)
 logging.info("Memory updated with evaluation results.")
 
 

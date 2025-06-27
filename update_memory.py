@@ -3,7 +3,7 @@ import os
 import logging
 from utils import Evaluation, convert_waypoints
 
-def update_memory(coords, waypoints, evaluation: Evaluation):
+def update_memory(coords, waypoints, evaluation: Evaluation, human_msg):
     """
     Updates the JSON file 'memory_database.json' with a new evaluation entry or updates an existing one.
     
@@ -60,7 +60,8 @@ def update_memory(coords, waypoints, evaluation: Evaluation):
         "violating_segments": evaluation.segs,
         "in_origin_dest": evaluation.orig_dest_ok,
         "waypoints_outside_flyzone": evaluation.out_pts,
-        "human_review": evaluation.human_review
+        "human_review": evaluation.human_review,
+        "human_msg": human_msg
         # "optimality": evaluation.optimality
         }
     }
