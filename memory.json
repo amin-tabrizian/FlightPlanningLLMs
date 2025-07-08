@@ -1,7 +1,7 @@
 {
-  "evaluation_number19": {
-    "polygons": "poly9",
-    "solution_waypoints": "[[-97.97, 32.89], [-97.7, 33.1], [-97.3, 33.45], [-96.5, 33.45], [-96.25, 33.02]]",
+  "evaluation_number29": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-96.4, 32.55], [-96.25588, 33.41547]]",
     "valid": true,
     "violated_polygons": [],
     "violating_segments": [],
@@ -10,19 +10,23 @@
       true
     ],
     "waypoints_outside_flyzone": [],
-    "human_review": "The path is not aligned with the human preference. The shortest path should go to the south of poly9-1 and above poly9-2"
+    "human_review": "the path is valid but not aligned with human preference. go to the south of all of the polygons.",
+    "human_msg": "Go to the south of all polygons\n"
   },
-  "evaluation_number18": {
-    "polygons": "poly9",
-    "solution_waypoints": "[[-97.97, 32.89], [-97.7, 33.1], [-97.3, 33.45], [-96.5, 33.45], [-96.25, 33.02]]",
-    "valid": true,
-    "violated_polygons": [],
+  "evaluation_number28": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.8, 33.35], [-97.6, 33.05], [-97.0, 32.8], [-96.4, 32.8], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-3"
+    ],
     "violating_segments": [],
     "in_origin_dest": [
       true,
       true
     ],
     "waypoints_outside_flyzone": [],
-    "human_review": "The optimal path is olmost direct and will go between poly9-1 and poly9-2"
+    "human_review": "Go to the south of all polygons.",
+    "human_msg": "Go to the south of all polygons\n"
   }
 }

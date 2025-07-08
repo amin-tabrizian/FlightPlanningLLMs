@@ -72,11 +72,6 @@ def rule_based_evaluation(waypoints, float_coordinates):
     intersects = interesection_list(waypoints, float_coordinates)
     in_flyzone = find_waypoints_outside_flyzone(waypoints, float_coordinates)
     in_origin_dest = origin_dest_verifyer(waypoints, float_coordinates)
-    # avoid_polygons = True if len(intersects) == 0 else False
-    # if len(intersects) > 0 or \
-    #     not in_flyzone or not \
-    #     in_origin_dest :
-    #     evaluation.valid = False
     evaluation.polys = list((intersects.keys()))
     evaluation.segs = list((intersects.values()))
     evaluation.out_pts = in_flyzone

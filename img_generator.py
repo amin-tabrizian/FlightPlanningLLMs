@@ -71,11 +71,21 @@ def generate_img(coords, waypoints, name, evaluation):
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
     # ax.set_title('2D Plot of Polygons, FlyZone, Origin, and Destination')
-    ax.set_title(name)
+    # ax.set_title(name)
 
-    # Optionally, adjust the axis limits based on the data ranges
-    ax.set_xlim(-98.5, -95.5)
-    ax.set_ylim(32.0, 34.0)
+    # Optionally, adjust the axis limits to center the FlyZone rectangle in the plot and respect the aspect ratio
+    x_min, x_max = -98.08175467827154, -96.11033479742945
+    y_min, y_max = 32.473238193139, 33.46540647154395
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+    x_range = (x_max - x_min)
+    y_range = (y_max - y_min)
+    # Add 20% padding to x, but only 5% padding to y, and preserve aspect ratio
+    x_pad = x_range * 0.1
+    y_pad = y_range * 0.025  # 2.5% on each side, total 5%
+    ax.set_xlim(x_min - x_pad, x_max + x_pad)
+    ax.set_ylim(y_min - y_pad, y_max + y_pad)
+    ax.set_aspect('equal', adjustable='box')
 
     # plt.grid(True)
-    plt.savefig(name)
+    plt.savefig(name, bbox_inches='tight', pad_inches=0)

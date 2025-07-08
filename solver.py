@@ -38,16 +38,22 @@ def response_generator(input, model, memory, float_coordinates):
     user_msg = input[1]
     if model == "o3-mini":
         model = "o3-mini-2025-01-31"
+    elif model == "o3":
+        model = "o3-2025-04-16"
     elif model == "claude-3-7":
         model = "claude-3-7-sonnet-20250219"
     elif model == "claude-3-5":
         model = "claude-3-5-haiku-20241022"
+    elif model == "claude-4-sonnet":
+        model = "claude-sonnet-4-0"
+    elif model == "claude-4-opus":
+        model = "claude-opus-4-20250514"
     if memory == True:
         memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review('memory.json')
     else:
         memory_prompt = ""
         logging.info("Memory is deactivated.")
-    if model == "gpt-4o" or model == "o3-mini-2025-01-31" or model == "gpt-4o-mini" or model == "o4-mini":
+    if model == "gpt-4o" or model == "o3-mini-2025-01-31" or model == "gpt-4o-mini" or model == "o4-mini" or model == "o3-2025-04-16":
         client = OpenAI()
         logging.info("Requesting flight plan from OpenAI API.")
         messages = [
@@ -64,7 +70,7 @@ def response_generator(input, model, memory, float_coordinates):
         )
         logging.info(f"System fingerprint is {completion.system_fingerprint}")
         response = completion.choices[0].message.parsed
-    elif model == "claude-3-7-sonnet-20250219" or model == "claude-3-5-haiku-20241022":
+    elif model == "claude-3-7-sonnet-20250219" or model == "claude-3-5-haiku-20241022" or model == "claude-sonnet-4-0" or model ==  "claude-opus-4-20250514":
         client = instructor.from_anthropic(
         anthropic.Anthropic(),
         )
@@ -108,6 +114,8 @@ def try_next_attempts(input, previous_output, review, model, float_coordinates, 
                     )
         if model == "o3-mini":
             model = "o3-mini-2025-01-31"
+        elif model == "o3":
+            model = "o3"
         elif model == "claude-3-7":
             model = "claude-3-7-sonnet-20250219"
         elif model == "claude-3-5":
@@ -144,7 +152,7 @@ def try_next_attempts(input, previous_output, review, model, float_coordinates, 
             )
         evaluation = rule_based_evaluation(convert_waypoints(response.waypoints), float_coordinates)
         if not evaluation.intesects:
-            review = generate_nl_review(evaluation)
+            review = generate_natural_language_review(evaluation)
         else:
             return response
         try_next_attempts(input, response, review, model, float_coordinates, attempt_number + 1, number_of_attempts)
