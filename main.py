@@ -54,7 +54,7 @@ logging.info("Coordinates extracted and converted to float format.")
 # Generate prompt for flight planning
 # human_msg = "I believe the best path will between the wind polygon 5-3 and 5-1."
 human_msg = args.human_preference if args.human_preference else ""
-prompt = prompt_generator(kml_path, placemarks, human_msg, samples=False, system_message = args.system_message)
+prompt = prompt_generator(float_coordinates, placemarks, human_msg, samples=False, system_message = args.system_message)
 logging.info("Generated prompt for flight planning.")
 
 # Set up the OpenAI client and define data models for the flight plan
@@ -87,7 +87,6 @@ if args.memory:
 start_time = time.time()
 response = response_generator(prompt, args.model_name, args.memory, float_coordinates)
 waypoints_list = convert_waypoints(response.waypoints)
-# simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
 end_time = time.time()
 line = polygon_kml.newlinestring(name="PolySolution", 
                                  coords=waypoints_list)
@@ -106,20 +105,29 @@ logging.info(f"Reasoning: {response.explanation}")
 
 # Evaluate the path planning
 evaluation = rule_based_evaluation(waypoints_list, float_coordinates)
+simplified_waypoints = None
+if evaluation.valid:
+    simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
+    generate_img(float_coordinates, simplified_waypoints, 'flight_plans/simplified_waypoints.png', evaluation)
+
+
 generate_img(float_coordinates, waypoints_list, args.image_path, evaluation)
-# generate_img(float_coordinates, simplified_waypoints, 'flight_plans/simplified_waypoints.png', evaluation)
 logging.info(f"Polygons that are intersected: {evaluation.polys}")
 # evaluation = llm_evaluation(evaluation, args.image_path)
 logging.info("Path planning evaluation completed.")
 logging.info(f"Valid or not?: {evaluation.valid}")
 logging.info(f"Is in flyzone: {evaluation.out_pts}")
 logging.info(f"Starts with origin and ends in destination: {evaluation.orig_dest_ok}")
-logging.info(f"Any comments about the solution?")
-evaluation.human_review = input()
 
 
 
-update_memory(float_coordinates, response.waypoints, evaluation, human_msg)
+if args.coach:
+    logging.info(f"Any comments about the solution?")
+    evaluation.human_review = input()
+    if simplified_waypoints:
+        update_memory(float_coordinates, convert_waypoints_to_dict(simplified_waypoints), evaluation, human_msg)
+    else:
+        update_memory(float_coordinates, response.waypoints, evaluation, human_msg)
 logging.info("Memory updated with evaluation results.")
 
 

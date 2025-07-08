@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlightPath Pro - AI-Powered Flight Planning</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f5576c;
+            --success-color: #00f2fe;
+            --dark-color: #2d3748;
+            --light-bg: #f8fafc;
+            --white-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15), 0 10px 10px rgba(0, 0, 0, 0.04);
+            --border-radius: 12px;
+            --border-radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-weight: 400;
+        }
+
+        /* Header & Navigation */
+        .header {
+            background: var(--white-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header .navbar-brand {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .header .navbar-brand:hover {
+            color: var(--primary-color);
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-gradient);
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.75rem;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .brand-text .brand-name {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .brand-text .brand-tagline {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            line-height: 1;
+        }
+
+        /* Cards & Sections */
+        .card-modern {
+            background: var(--white-bg);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+            overflow: hidden;
+        }
+
+        .card-modern:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .card-header-modern {
+            background: var(--light-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1.125rem;
+        }
+
+        .card-body-modern {
+            padding: 2rem;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            background: var(--white-bg);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--primary-gradient);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.02);
+        }
+
+        .upload-area:hover::before {
+            opacity: 0.05;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-area.dragover::before {
+            opacity: 0.1;
+        }
+
+        .upload-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+            transition: var(--transition);
+        }
+
+        .upload-area:hover .upload-icon {
+            transform: scale(1.1);
+        }
+
+        .upload-text {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-subtext {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* Form Controls */
+        .form-label-modern {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-control-modern,
+        .form-select-modern {
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: var(--white-bg);
+        }
+
+        .form-control-modern:focus,
+        .form-select-modern:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+
+        /* Buttons */
+        .btn-modern {
+            border-radius: var(--border-radius);
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary-modern {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary-modern {
+            background: var(--white-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary-modern:hover {
+            background: var(--light-bg);
+            transform: translateY(-1px);
+        }
+
+        .btn-success-modern {
+            background: var(--success-gradient);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Loading States */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            backdrop-filter: blur(2px);
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .spinner-text {
+            margin-top: 1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .btn-modern.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn-modern.loading .btn-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Notifications & Alerts */
+        .alert-modern {
+            border-radius: var(--border-radius);
+            border: none;
+            padding: 1rem 1.25rem;
+            font-weight: 500;
+        }
+
+        .alert-success-modern {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
+            color: #0369a1;
+            border-left: 4px solid var(--success-color);
+        }
+
+        .alert-danger-modern {
+            background: linear-gradient(135deg, rgba(245, 87, 108, 0.1) 0%, rgba(240, 147, 251, 0.1) 100%);
+            color: #dc2626;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs-modern {
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 2rem;
+            display: flex;
+        }
+
+        .nav-tabs-modern .nav-item {
+            flex: 1;
+        }
+
+        .nav-tabs-modern .nav-link {
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 1rem 1.5rem;
+            border-radius: 0;
+            border-bottom: 3px solid transparent;
+            transition: var(--transition);
+            width: 100%;
+            text-align: center;
+        }
+
+        .nav-tabs-modern .nav-link:hover {
+            color: var(--primary-color);
+            border-bottom-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-tabs-modern .nav-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: none;
+        }
+
+        /* Metrics Cards */
+        .metric-card-modern {
+            background: var(--white-bg);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .metric-card-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 1rem;
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: white;
+        }
+
+        .metric-icon.distance {
+            background: var(--primary-gradient);
+        }
+
+        .metric-icon.waypoints {
+            background: var(--success-gradient);
+        }
+
+        .metric-icon.time {
+            background: var(--secondary-gradient);
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Results Section */
+        .results-section {
+            background: var(--white-bg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .results-section.inactive {
+            background: #f8f9fa;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .results-section.inactive .card-header-modern {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .results-section.inactive .card-body-modern {
+            color: #6c757d;
+        }
+
+        .flight-plan-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Waypoints */
+        .waypoint-item {
+            background: var(--white-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid var(--primary-color);
+            transition: var(--transition);
+        }
+
+        .waypoint-item:hover {
+            box-shadow: var(--shadow-sm);
+            transform: translateX(4px);
+        }
+
+        /* Badges */
+        .badge-modern {
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .badge-success-modern {
+            background: var(--success-gradient);
+            color: white;
+        }
+
+        .badge-danger-modern {
+            background: var(--secondary-gradient);
+            color: white;
+        }
+
+        .badge-warning-modern {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #dc2626;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .card-body-modern {
+                padding: 1.5rem;
+            }
+            
+            .upload-area {
+                padding: 2rem 1rem;
+            }
+            
+            .metric-value {
+                font-size: 1.25rem;
+            }
+            
+            .nav-tabs-modern .nav-link {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.85rem;
+            }
+            
+            .row.g-4 {
+                flex-direction: column;
+            }
+            
+            .col-lg-6 {
+                width: 100%;
+            }
+        }
+
+        /* Flight Plan Placeholder */
+        .flight-plan-placeholder {
+            padding: 3rem 2rem;
+            text-align: center;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: var(--border-radius);
+        }
+
+        /* Animation Classes */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Layout Utilities */
+        .container-modern {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .section-spacing {
+            margin-bottom: 2rem;
+        }
+
+        .text-gradient {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Hidden utility */
+        .d-none-modern {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container-modern">
+            <nav class="navbar">
+                <a class="navbar-brand" href="#">
+                    <div class="brand-icon">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-name">FlightPath Pro</span>
+                        <span class="brand-tagline">AI-Powered Flight Planning</span>
+                    </div>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container-modern">
+        <div class="row g-4" id="mainContent">
+            <!-- Input Panel -->
+            <div class="col-lg-6" id="inputPanel">
+                <!-- File Upload Section -->
+                <div class="card-modern section-spacing">
+                    <div class="card-header-modern">
+                        <i class="fas fa-cloud-upload-alt me-2"></i>
+                        Upload Flight Dataset
+                    </div>
+                    <div class="card-body-modern">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-content">
+                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <p class="upload-text">Drop your KML file here or click to browse</p>
+                                <p class="upload-subtext">Supports KML files up to 16MB</p>
+                                <input type="file" id="kmlFile" accept=".kml" style="display: none;">
+                            </div>
+                        </div>
+                        <div id="fileInfo" class="mt-3 d-none-modern">
+                            <div class="alert-modern alert-success-modern">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span id="fileName"></span> uploaded successfully!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration Section -->
+                <div class="card-modern section-spacing d-none-modern" id="configSection">
+                    <div class="card-header-modern">
+                        <i class="fas fa-cogs me-2"></i>
+                        Flight Configuration
+                    </div>
+                    <div class="card-body-modern">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="polygonSet" class="form-label-modern">Hazard Zone Set</label>
+                                <select class="form-select form-select-modern" id="polygonSet" required>
+                                    <option value="">Select hazard zones...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="modelSelect" class="form-label-modern">AI Model</label>
+                                <select class="form-select form-select-modern" id="modelSelect" required>
+                                    <option value="">Select AI model...</option>
+                                    {% for model in models %}
+                                    <option value="{{ model }}">{{ model }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="originSelect" class="form-label-modern">Origin Point</label>
+                                <select class="form-select form-select-modern" id="originSelect" required>
+                                    <option value="">Select origin...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="destinationSelect" class="form-label-modern">Destination Point</label>
+                                <select class="form-select form-select-modern" id="destinationSelect" required>
+                                    <option value="">Select destination...</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label for="humanMsg" class="form-label-modern">Flight Preferences (Optional)</label>
+                                <textarea class="form-control form-control-modern" id="humanMsg" rows="3" 
+                                          placeholder="Enter any specific flight requirements or preferences..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="promptKey" class="form-label-modern">Advanced Prompt (Optional)</label>
+                                <select class="form-select form-select-modern" id="promptKey">
+                                    {% for key, value in prompts.items() %}
+                                    <option value="{{ key }}" {% if key == default_prompt %}selected{% endif %}>{{ key }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="memoryEnabled" checked>
+                                        <label class="form-check-label" for="memoryEnabled">
+                                            Enable Memory
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="coachEnabled" checked>
+                                        <label class="form-check-label" for="coachEnabled">
+                                            Enable Coaching
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 mt-4">
+                                <button type="button" class="btn btn-modern btn-primary-modern w-100" id="runPlanning">
+                                    <i class="fas fa-rocket me-2"></i>
+                                    Generate Flight Plan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="col-lg-6" id="resultsPanel">
+                <div class="results-section inactive" id="resultsSection">
+                    <div class="card-header-modern">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Flight Plan Results
+                    </div>
+                    <div class="card-body-modern">
+                        <!-- Loading State -->
+                        <div class="loading-overlay d-none-modern" id="loadingOverlay">
+                            <div class="spinner"></div>
+                            <div class="spinner-text">Generating optimal flight path...</div>
+                        </div>
+
+                        <!-- Navigation Tabs -->
+                        <ul class="nav nav-tabs nav-tabs-modern" id="resultTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#overview" type="button" role="tab">
+                                    <i class="fas fa-eye me-2"></i>Overview
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="details-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#details" type="button" role="tab">
+                                    <i class="fas fa-list me-2"></i>Details
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="evaluation-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#evaluation" type="button" role="tab">
+                                    <i class="fas fa-clipboard-check me-2"></i>Evaluation
+                                </button>
+                            </li>
+                        </ul>
+
+                        <!-- Tab Content -->
+                        <div class="tab-content" id="resultTabContent">
+                            <!-- Overview Tab -->
+                            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                                <!-- Flight Plan Image -->
+                                <div class="text-center mb-4">
+                                    <div class="flight-plan-placeholder" id="flightPlanPlaceholder">
+                                        <i class="fas fa-map fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">Flight plan visualization will appear here</p>
+                                    </div>
+                                    <img id="flightPlanImage" class="flight-plan-image" 
+                                         src="" alt="Flight Plan Visualization" style="display: none;">
+                                </div>
+
+                                <!-- Metrics Row -->
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-4">
+                                        <div class="metric-card-modern">
+                                            <div class="metric-icon distance">
+                                                <i class="fas fa-route"></i>
+                                            </div>
+                                            <div class="metric-value" id="totalDistance">-</div>
+                                            <div class="metric-label">Total Distance (km)</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="metric-card-modern">
+                                            <div class="metric-icon waypoints">
+                                                <i class="fas fa-map-pin"></i>
+                                            </div>
+                                            <div class="metric-value" id="waypointCount">-</div>
+                                            <div class="metric-label">Waypoints</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="metric-card-modern">
+                                            <div class="metric-icon time">
+                                                <i class="fas fa-clock"></i>
+                                            </div>
+                                            <div class="metric-value" id="responseTime">-</div>
+                                            <div class="metric-label">Response Time (s)</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- AI Explanation -->
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="fas fa-brain me-2 text-gradient"></i>AI Analysis
+                                    </h6>
+                                    <div class="card-modern">
+                                        <div class="card-body-modern" id="aiExplanation">
+                                            No analysis available yet.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Details Tab -->
+                            <div class="tab-pane fade" id="details" role="tabpanel">
+                                <!-- Waypoints List -->
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="fas fa-list-ol me-2 text-gradient"></i>Flight Waypoints
+                                    </h6>
+                                    <div id="waypointsList" style="max-height: 400px; overflow-y: auto;">
+                                        <!-- Waypoints will be populated here -->
+                                    </div>
+                                </div>
+
+                                <!-- Download Links -->
+                                <div>
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="fas fa-download me-2 text-gradient"></i>Download Results
+                                    </h6>
+                                    <div class="d-grid gap-2 d-md-flex">
+                                        <a id="downloadKML" class="btn btn-modern btn-primary-modern flex-fill d-none-modern">
+                                            <i class="fas fa-download me-2"></i>Download KML
+                                        </a>
+                                        <a id="downloadTXT" class="btn btn-modern btn-secondary-modern flex-fill d-none-modern">
+                                            <i class="fas fa-file-alt me-2"></i>Download Waypoints
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Evaluation Tab -->
+                            <div class="tab-pane fade" id="evaluation" role="tabpanel">
+                                <!-- Path Evaluation -->
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="fas fa-check-circle me-2 text-gradient"></i>Path Validation
+                                    </h6>
+                                    <div id="evaluationResults">
+                                        <div class="d-flex gap-2 mb-3">
+                                            <span class="badge badge-modern" id="validBadge">Pending</span>
+                                            <span class="badge badge-modern" id="originDestBadge">Endpoints: Pending</span>
+                                        </div>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Intersected Hazards:</small>
+                                                <span id="intersectedPolygons" class="fw-medium">None</span>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Out of Bounds:</small>
+                                                <span id="outOfFlyzone" class="fw-medium">None</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Coach Review Section -->
+                                <div id="coachSection" class="d-none-modern">
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="fas fa-comment-dots me-2 text-gradient"></i>Expert Review
+                                    </h6>
+                                    <div class="mb-3">
+                                        <label for="humanReview" class="form-label-modern">
+                                            Provide feedback on this flight plan:
+                                        </label>
+                                        <textarea class="form-control form-control-modern" id="humanReview" rows="4" 
+                                                  placeholder="Share your thoughts on the route efficiency, safety considerations, or suggested improvements..."></textarea>
+                                    </div>
+                                    <button type="button" class="btn btn-modern btn-success-modern" id="submitReview">
+                                        <i class="fas fa-paper-plane me-2"></i>Submit Review
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050">
+        <div id="reviewToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    Review submitted successfully!
+                </div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentKmlFilename = null;
+        let currentFlightPlanData = null;
+
+        // DOM Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const kmlFile = document.getElementById('kmlFile');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const configSection = document.getElementById('configSection');
+        const resultsPanel = document.getElementById('resultsPanel');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // File upload handling with enhanced UX
+        uploadArea.addEventListener('click', () => kmlFile.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                kmlFile.files = files;
+                handleFileUpload();
+            }
+        });
+
+        kmlFile.addEventListener('change', handleFileUpload);
+
+        function handleFileUpload() {
+            const file = kmlFile.files[0];
+            if (!file) return;
+
+            // Validate file type
+            if (!file.name.toLowerCase().endsWith('.kml')) {
+                showNotification('Please select a valid KML file', 'error');
+                return;
+            }
+
+            // Validate file size (16MB)
+            const maxSize = 16 * 1024 * 1024;
+            if (file.size > maxSize) {
+                showNotification('File size must be less than 16MB', 'error');
+                return;
+            }
+
+            // Show upload progress
+            const formData = new FormData();
+            formData.append('kml_file', file);
+
+            // Reset layout
+            resetLayout();
+
+            fetch('/upload_kml', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentKmlFilename = data.filename;
+                    fileName.textContent = data.filename;
+                    
+                    // Show success with animation
+                    fileInfo.classList.remove('d-none-modern');
+                    fileInfo.classList.add('fade-in');
+                    
+                    // Show config section with animation
+                    setTimeout(() => {
+                        configSection.classList.remove('d-none-modern');
+                        configSection.classList.add('slide-up');
+                        populateDropdowns(data);
+                    }, 300);
+                    
+                    showNotification('File uploaded successfully!', 'success');
+                } else {
+                    showNotification('Upload failed: ' + (data.error || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Upload failed due to network error', 'error');
+            });
+        }
+
+        function populateDropdowns(data) {
+            // Populate polygon sets
+            const polygonSelect = document.getElementById('polygonSet');
+            polygonSelect.innerHTML = '<option value="">Select hazard zones...</option>';
+            data.polygon_sets.forEach(set => {
+                const option = document.createElement('option');
+                option.value = set;
+                option.textContent = set.toUpperCase();
+                polygonSelect.appendChild(option);
+            });
+
+            // Populate origins
+            const originSelect = document.getElementById('originSelect');
+            originSelect.innerHTML = '<option value="">Select origin...</option>';
+            data.origins.forEach(origin => {
+                const option = document.createElement('option');
+                option.value = origin;
+                option.textContent = origin;
+                originSelect.appendChild(option);
+            });
+
+            // Populate destinations
+            const destinationSelect = document.getElementById('destinationSelect');
+            destinationSelect.innerHTML = '<option value="">Select destination...</option>';
+            data.destinations.forEach(destination => {
+                const option = document.createElement('option');
+                option.value = destination;
+                option.textContent = destination;
+                destinationSelect.appendChild(option);
+            });
+        }
+
+        function resetLayout() {
+            // Reset results panel to inactive state
+            const resultsSection = document.getElementById('resultsSection');
+            resultsSection.classList.add('inactive');
+            
+            // Hide previous results
+            document.getElementById('flightPlanImage').style.display = 'none';
+            document.getElementById('flightPlanPlaceholder').style.display = 'block';
+            
+            // Clear any previous results
+            currentFlightPlanData = null;
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create dynamic toast
+            const toastContainer = document.querySelector('.position-fixed.bottom-0.end-0');
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center border-0 ${type === 'success' ? 'text-bg-success' : type === 'error' ? 'text-bg-danger' : 'text-bg-info'}`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Remove toast after it's hidden
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.remove();
+            });
+        }
+
+        // Run Planning
+        document.getElementById('runPlanning').addEventListener('click', function() {
+            const polygonSet = document.getElementById('polygonSet').value;
+            const model = document.getElementById('modelSelect').value;
+            const origin = document.getElementById('originSelect').value;
+            const destination = document.getElementById('destinationSelect').value;
+            const humanMsg = document.getElementById('humanMsg').value;
+            const promptKey = document.getElementById('promptKey').value;
+            const memory = document.getElementById('memoryEnabled').checked;
+            const coach = document.getElementById('coachEnabled').checked;
+
+            if (!polygonSet || !model || !origin || !destination) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            // Show loading state on button
+            const runButton = document.getElementById('runPlanning');
+            runButton.classList.add('loading');
+            runButton.innerHTML = '<div class="btn-spinner"></div>Generating Flight Plan...';
+            
+            // Show loading overlay
+            loadingOverlay.classList.remove('d-none-modern');
+
+            const requestData = {
+                kml_filename: currentKmlFilename,
+                polygon_set: polygonSet,
+                model: model,
+                origin: origin,
+                destination: destination,
+                human_msg: humanMsg,
+                prompt_key: promptKey,
+                memory: memory,
+                coach: coach
+            };
+
+            fetch('/run_planning', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading and restore button
+                loadingOverlay.classList.add('d-none-modern');
+                runButton.classList.remove('loading');
+                runButton.innerHTML = '<i class="fas fa-rocket me-2"></i>Generate Flight Plan';
+                
+                if (data.success) {
+                    // Activate results panel
+                    const resultsSection = document.getElementById('resultsSection');
+                    resultsSection.classList.remove('inactive');
+                    
+                    currentFlightPlanData = data;
+                    displayResults(data);
+                    showNotification('Flight plan generated successfully!', 'success');
+                } else {
+                    showNotification('Planning failed: ' + (data.error || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                // Hide loading and restore button
+                loadingOverlay.classList.add('d-none-modern');
+                runButton.classList.remove('loading');
+                runButton.innerHTML = '<i class="fas fa-rocket me-2"></i>Generate Flight Plan';
+                
+                console.error('Error:', error);
+                showNotification('Planning failed due to network error', 'error');
+            });
+        });
+
+        function displayResults(data) {
+            // Display flight plan image
+            const flightPlanImage = document.getElementById('flightPlanImage');
+            const flightPlanPlaceholder = document.getElementById('flightPlanPlaceholder');
+            if (data.image_path) {
+                flightPlanPlaceholder.style.display = 'none';
+                flightPlanImage.src = data.image_path;
+                flightPlanImage.style.display = 'block';
+                flightPlanImage.classList.add('fade-in');
+            }
+
+            // Update metrics
+            document.getElementById('totalDistance').textContent = 
+                data.total_length ? parseFloat(data.total_length).toFixed(2) : '-';
+            document.getElementById('waypointCount').textContent = 
+                data.response_waypoints ? data.response_waypoints.length : '-';
+            document.getElementById('responseTime').textContent = 
+                data.response_time ? parseFloat(data.response_time).toFixed(2) : '-';
+
+            // Display AI explanation
+            document.getElementById('aiExplanation').textContent = 
+                data.explanation || 'No explanation provided.';
+
+            // Display waypoints
+            const waypointsList = document.getElementById('waypointsList');
+            waypointsList.innerHTML = '';
+            if (data.response_waypoints && data.response_waypoints.length > 0) {
+                data.response_waypoints.forEach((waypoint, index) => {
+                    const waypointDiv = document.createElement('div');
+                    waypointDiv.className = 'waypoint-item';
+                    waypointDiv.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>Waypoint ${index + 1}</strong>
+                            <small class="text-muted">${waypoint[1].toFixed(6)}, ${waypoint[0].toFixed(6)}</small>
+                        </div>
+                    `;
+                    waypointsList.appendChild(waypointDiv);
+                });
+            }
+
+            // Display evaluation results
+            if (data.evaluation) {
+                const validBadge = document.getElementById('validBadge');
+                validBadge.textContent = data.evaluation.valid ? 'Valid Path' : 'Invalid Path';
+                validBadge.className = `badge badge-modern ${data.evaluation.valid ? 'badge-success-modern' : 'badge-danger-modern'}`;
+
+                const originDestBadge = document.getElementById('originDestBadge');
+                const isConnected = data.evaluation.origin_dest_ok && data.evaluation.origin_dest_ok[0] && data.evaluation.origin_dest_ok[1];
+                originDestBadge.textContent = `Endpoints: ${isConnected ? 'Connected' : 'Disconnected'}`;
+                originDestBadge.className = `badge badge-modern ${isConnected ? 'badge-success-modern' : 'badge-danger-modern'}`;
+
+                document.getElementById('intersectedPolygons').textContent = 
+                    data.evaluation.intersected_polygons?.length > 0 ? 
+                    data.evaluation.intersected_polygons.join(', ') : 'None';
+
+                document.getElementById('outOfFlyzone').textContent = 
+                    data.evaluation.out_of_flyzone?.length > 0 ? 
+                    `${data.evaluation.out_of_flyzone.length} waypoints` : 'None';
+            }
+
+            // Show download links
+            if (data.solution_path) {
+                const downloadKML = document.getElementById('downloadKML');
+                downloadKML.href = data.solution_path;
+                downloadKML.classList.remove('d-none-modern');
+                downloadKML.classList.add('fade-in');
+            }
+
+            if (data.text_path) {
+                const downloadTXT = document.getElementById('downloadTXT');
+                downloadTXT.href = data.text_path;
+                downloadTXT.classList.remove('d-none-modern');
+                downloadTXT.classList.add('fade-in');
+            }
+
+            // Show coach section if enabled
+            if (data.coach_enabled) {
+                document.getElementById('coachSection').classList.remove('d-none-modern');
+            }
+        }
+
+        // Submit Review
+        document.getElementById('submitReview').addEventListener('click', function() {
+            const review = document.getElementById('humanReview').value.trim();
+            if (!review) {
+                showNotification('Please enter a review before submitting', 'error');
+                return;
+            }
+
+            const reviewData = {
+                review: review,
+                flight_plan_data: currentFlightPlanData
+            };
+
+            fetch('/submit_review', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(reviewData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Review submitted successfully!', 'success');
+                    document.getElementById('humanReview').value = '';
+                } else {
+                    showNotification('Failed to submit review', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Failed to submit review due to network error', 'error');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -79,7 +79,7 @@ def convert_to_float_dict(coord_dict, approx=False):
             # Split the coordinate string into individual numbers
             numbers = coord.split(',')
             # Convert first two numbers (lon, lat) to float
-            float_coord = [round(float(numbers[0]), 2), round(float(numbers[1]), 2)]
+            float_coord = [round(float(numbers[0]), 5), round(float(numbers[1]), 5)]
             # Add to the list of coordinates
             float_coords.append(float_coord)
 
@@ -98,7 +98,7 @@ def convert_to_float_dict(coord_dict, approx=False):
     return float_dict
 
 
-def prompt_generator(kml_path, placemarks, human_msg, samples = False, system_message = ""):
+def prompt_generator(float_coordinates, placemarks, human_msg, samples = False, system_message = ""):
     """
     Generates a prompt for the flight planner based on KML file and placemark names.
 
@@ -110,7 +110,7 @@ def prompt_generator(kml_path, placemarks, human_msg, samples = False, system_me
         str: The generated prompt for the flight planner.
     """
     human_msg = "Human preference: \n" + human_msg + human_msg + human_msg + " \n" if human_msg else ""
-    coordinates_dict = convert_to_float_dict(get_coordinates_from_kml(kml_path, placemarks))
+    coordinates_dict = float_coordinates
     user_msg = 'Now you have to generate a flight plan avoiding the wind polygons for the following problem: \n'
     # system_msg = (
     #     "You are a flight planner for an eVTOL aircraft. "
@@ -207,6 +207,10 @@ def convert_dict_to_list_waypoints(waypoints):
         return [[waypoint['latitude'], waypoint['longitude']] for waypoint in waypoints]
     else:
         return [[waypoint['longitude'], waypoint['latitude']] for waypoint in waypoints]
+    
+def convert_waypoints_to_dict(waypoints):
+    return [Waypoint(latitude=waypoint[0], longitude=waypoint[1]) for waypoint in waypoints]
+
 
 # Haversine formula: returns the distance (in kilometers) between two points given in degrees.
 def haversine_distance(point1, point2):
@@ -407,9 +411,10 @@ def generate_natural_language_review(json_file_path, raw=False):
 
         if eval_data.get('waypoints_outside_flyzone'):
             review += f"- Some waypoints fall outside the flyzone: {eval_data['waypoints_outside_flyzone']}.\n"
+        if eval_data.get('human_msg'):
+            review += f"- Human message: {eval_data['human_msg']}\n"
         if eval_data.get('human_review'):
             review += f"- Human review: {eval_data['human_review']}\n"
-
         origin_valid, dest_valid = eval_data['in_origin_dest']
         review += f"- The origin is {'within' if origin_valid else 'outside'} the allowed region.\n"
         review += f"- The destination is {'within' if dest_valid else 'outside'} the allowed region.\n"

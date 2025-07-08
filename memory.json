@@ -1,7 +1,7 @@
 {
-  "evaluation_number5": {
+  "evaluation_number29": {
     "polygons": "poly1",
-    "solution_waypoints": "[[-97.97, 33.36], [-97.97, 32.6], [-96.25, 32.57]]",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-96.4, 32.55], [-96.25588, 33.41547]]",
     "valid": true,
     "violated_polygons": [],
     "violating_segments": [],
@@ -10,21 +10,23 @@
       true
     ],
     "waypoints_outside_flyzone": [],
-    "human_review": "This is valid but not optimal. The shortest distance would be diagonal. ",
-    "human_msg": "Find the shortest path"
+    "human_review": "the path is valid but not aligned with human preference. go to the south of all of the polygons.",
+    "human_msg": "Go to the south of all polygons\n"
   },
-  "evaluation_number4": {
+  "evaluation_number28": {
     "polygons": "poly1",
-    "solution_waypoints": "[[-97.97, 33.36], [-97.7, 33.44], [-96.9, 33.44], [-96.4, 33.44], [-96.4, 33.1], [-96.25, 32.57]]",
-    "valid": true,
-    "violated_polygons": [],
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.8, 33.35], [-97.6, 33.05], [-97.0, 32.8], [-96.4, 32.8], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-3"
+    ],
     "violating_segments": [],
     "in_origin_dest": [
       true,
       true
     ],
     "waypoints_outside_flyzone": [],
-    "human_review": "",
-    "human_msg": "Find the shortest path"
+    "human_review": "Go to the south of all polygons.",
+    "human_msg": "Go to the south of all polygons\n"
   }
 }

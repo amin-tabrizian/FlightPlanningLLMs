@@ -129,5 +129,413 @@
     "waypoints_outside_flyzone": [],
     "human_review": "This is valid but not optimal. The shortest distance would be diagonal. ",
     "human_msg": "Find the shortest path"
+  },
+  "evaluation_number6": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.97, 32.75], [-97.5, 32.6], [-96.25, 32.55], [-96.25, 32.57]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go diagonally",
+    "human_msg": "Find the shortest path"
+  },
+  "evaluation_number7": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-98.0, 33.1], [-97.8, 32.75], [-97.5, 32.65], [-96.25, 32.57]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-4"
+    ],
+    "violating_segments": [
+      [
+        [
+          [
+            -97.5,
+            32.65
+          ],
+          [
+            -96.25,
+            32.57
+          ]
+        ]
+      ]
+    ],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go above poly1-3, 1-4, 1-5 and below others. ",
+    "human_msg": "Find the shortest path"
+  },
+  "evaluation_number8": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.97, 33.2], [-97.7, 33.08], [-97.4, 33.06], [-97.3, 32.78], [-97.1, 32.78], [-97.0, 32.78], [-96.8, 32.63], [-96.25, 32.57]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-3",
+      "poly1-5"
+    ],
+    "violating_segments": [
+      [
+        [
+          [
+            -97.4,
+            33.06
+          ],
+          [
+            -97.3,
+            32.78
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -97.0,
+            32.78
+          ],
+          [
+            -96.8,
+            32.63
+          ]
+        ]
+      ]
+    ],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go to the north east of poly1-3 and poly1-4. ",
+    "human_msg": "Find the shortest path"
+  },
+  "evaluation_number9": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.97, 33.46], [-96.3, 33.46], [-96.25, 32.57]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go below poly1-1, poly1-7, poly1-2 and above others",
+    "human_msg": "Find the shortest path"
+  },
+  "evaluation_number10": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.97, 33.46], [-96.3, 33.46], [-96.25, 32.57]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go diagonally",
+    "human_msg": "Find the shortest path"
+  },
+  "evaluation_number11": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.65, 32.7], [-97.3, 32.6], [-96.25, 32.57]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "",
+    "human_msg": "Find the shortest path"
+  },
+  "evaluation_number12": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.15], [-97.7, 33.37], [-97.15, 33.05], [-96.8, 33.35], [-96.25, 33.22]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-1",
+      "poly1-7",
+      "poly1-2"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is invalid\n",
+    "human_msg": "Find the shortest path."
+  },
+  "evaluation_number13": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 32.89], [-97.3, 32.59], [-96.25, 32.57]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is valid and aligned with human preference.",
+    "human_msg": "Find the shortest path!"
+  },
+  "evaluation_number14": {
+    "polygons": "poly2",
+    "solution_waypoints": "[[-97.97, 33.15], [-98.0, 32.55], [-96.25, 32.57]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is valid but not optimal. Try going to the south of the poly2-1, poly2-2 and above all others. ",
+    "human_msg": "Find the shortest path. "
+  },
+  "evaluation_number15": {
+    "polygons": "poly2",
+    "solution_waypoints": "[[-97.97, 33.15], [-97.97, 33.1], [-97.3, 33.1], [-97.0, 32.8], [-96.5, 32.8], [-96.3, 32.65], [-96.25, 32.57]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly2-6",
+      "poly2-7"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Try going to the north of the poly2-6 and poly2-7 while staying below poly2-1 and poly2-2. Then the path will be optimal. ",
+    "human_msg": "Find the shortest path. "
+  },
+  "evaluation_number16": {
+    "polygons": "poly2",
+    "solution_waypoints": "[[-97.97, 33.15], [-97.9, 32.88], [-97.0, 32.88], [-96.4, 32.95], [-96.25, 33.02]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly2-3",
+      "poly2-2"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is invalid as it intersects with poly2-3 and poly2-2.",
+    "human_msg": "Find the shortest path possible!"
+  },
+  "evaluation_number17": {
+    "polygons": "poly2",
+    "solution_waypoints": "[[-97.94, 32.55], [-97.94, 33.1], [-97.8, 33.2], [-97.6, 33.1], [-97.0, 32.88], [-96.4, 32.88], [-96.26, 33.42]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly2-3"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is aligned with human preference. Going to the north of poly2-3 will make it valid as well. ",
+    "human_msg": "Find the shortest path!"
+  },
+  "evaluation_number18": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.97, 33.44], [-96.35, 33.44], [-96.25, 33.22]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Looks great!",
+    "human_msg": "Find the shortest path!"
+  },
+  "evaluation_number19": {
+    "polygons": "poly4",
+    "solution_waypoints": "[[-97.97, 32.89], [-97.8, 32.5], [-96.25, 32.57]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Great job!",
+    "human_msg": ""
+  },
+  "evaluation_number20": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97, 33.36], [-97.97, 33.46], [-96.35, 33.46], [-96.25, 33.02]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is optimal and valid.\n",
+    "human_msg": "Find the shortest path!"
+  },
+  "evaluation_number21": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.9413, 32.55268], [-97.9413, 33.1], [-97.7, 33.35], [-97.0, 33.45], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-1"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Try going to the north of poly1-1. Moving the first waypoint more to the right will make the flight plan shorter.",
+    "human_msg": "Find the shortest path possible. You may need to insert more waypoints to find the shortest valid flight plan.\n"
+  },
+  "evaluation_number22": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.9413, 32.55268], [-97.9413, 33.0], [-97.3, 33.45], [-96.25588, 33.41547]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is great but it can be shorter. move the second waypoint super close to the south west of poly1-1",
+    "human_msg": "Find the shortest path possible. You may need to insert more waypoints to find the shortest valid flight plan.\n"
+  },
+  "evaluation_number23": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.32337, 33.28087], [-96.75484, 33.28087], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-1",
+      "poly1-7",
+      "poly1-2"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is wrong.",
+    "human_msg": ""
+  },
+  "evaluation_number24": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.32337, 33.28087], [-96.75484, 33.28087], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-1",
+      "poly1-7",
+      "poly1-2"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The path is wrong.",
+    "human_msg": ""
+  },
+  "evaluation_number25": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.0, 33.455], [-96.25588, 33.41547]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Great path!",
+    "human_msg": "find the shortest path!"
+  },
+  "evaluation_number26": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.8, 33.2], [-97.3, 33.0], [-96.7, 32.95], [-96.5, 33.1], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-3",
+      "poly1-2"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Move the waypoints so that the flight plan is above poly1-3 and move the other waypoints a little to the south so that the flight plan stays below poly1-2.",
+    "human_msg": "Go below poly1-1, poly1-7, and poly1-2 while staying above other polygons."
+  },
+  "evaluation_number27": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.9, 33.33], [-97.8, 33.055], [-96.9, 33.055], [-96.6, 33.055], [-96.4, 33.3], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-2"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "One of the waypoints is inside poly1-2. move it to the south to make the flight plan valid and aligned with human preference.",
+    "human_msg": "Go below poly1-1, poly1-7, and poly1-2 while staying above other polygons."
+  },
+  "evaluation_number28": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.8, 33.35], [-97.6, 33.05], [-97.0, 32.8], [-96.4, 32.8], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-3"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go to the south of all polygons.",
+    "human_msg": "Go to the south of all polygons\n"
+  },
+  "evaluation_number29": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-96.4, 32.55], [-96.25588, 33.41547]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "the path is valid but not aligned with human preference. go to the south of all of the polygons.",
+    "human_msg": "Go to the south of all polygons\n"
   }
 }

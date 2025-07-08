@@ -11,3 +11,5 @@ test*
 coach_example/
 *batch*
 *memory*
+app/venv/
+app/.env
