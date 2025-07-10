@@ -70,13 +70,18 @@ def update_memory(coords, waypoints, evaluation: Evaluation, human_msg):
         if 'poly' in place_mark and not polygon_added:
             dict_update["evaluation_number" + str(idx)]['polygons'] = place_mark[:5]
             polygon_added = True
+        elif 'Origin' not in place_mark and 'Destination' not in place_mark and 'FlyZone' not in place_mark:
+            if dict_update["evaluation_number" + str(idx)]['polygons'] == '':
+                dict_update["evaluation_number" + str(idx)]['polygons'] = set([place_mark])
+            else:
+                dict_update["evaluation_number" + str(idx)]['polygons'].add(place_mark)
         # elif 'Origin' in place_mark:
         #     dict_update["evaluation_number" + str(idx)]['origin'] = coords.get(place_mark)
         # elif 'Destination' in place_mark:
             # dict_update["evaluation_number" + str(idx)]['destination'] = coords.get(place_mark)
         # elif 'FlyZone' in place_mark:
         #     dict_update["evaluation_number" + str(idx)]['flyzone'] = coords.get(place_mark)
-    
+    dict_update["evaluation_number" + str(idx)]['polygons'] = list(dict_update["evaluation_number" + str(idx)]['polygons'])
     # Write the updated data back to the JSON file.
     data.update(dict_update)
     with open(file_path, "w") as f:
@@ -98,10 +103,12 @@ def sample_from_memory(poly_name, memory_path='memory_database.json', n_samples=
     
 
     i = 0
-    polygon_of_interest = poly_name[0:5]
+    polygon_of_interest = poly_name[0:5] if 'poly' in poly_name else poly_name
+    if type(polygon_of_interest) == list:
+        polygon_of_interest = set(polygon_of_interest)
     key_list = []
     for evaluation_number in sorted(memory_data.keys(), key=lambda k: int(k.split('evaluation_number')[-1]), reverse=True):
-        if polygon_of_interest == memory_data[evaluation_number]['polygons']:
+        if polygon_of_interest == set(memory_data[evaluation_number]['polygons']) or (type(polygon_of_interest) == str and polygon_of_interest in memory_data[evaluation_number]['polygons']):
             key_list.append(evaluation_number)
             i += 1
         if i == n_samples:

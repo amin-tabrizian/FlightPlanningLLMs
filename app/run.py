@@ -38,7 +38,7 @@ def main():
     
     # Configuration for SSH access
     host = os.environ.get('FLASK_HOST', '0.0.0.0')  # Bind to all interfaces for SSH access
-    port = int(os.environ.get('FLASK_PORT', '5000'))  # Default to port 5000
+    port = int(os.environ.get('FLASK_PORT', '5001'))  # Default to port 5000
     debug = os.environ.get('FLASK_DEBUG', '1') == '1'
     
     print("Starting Flight Planning LLM Web Application...")

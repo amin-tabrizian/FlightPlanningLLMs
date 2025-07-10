@@ -537,5 +537,402 @@
     "waypoints_outside_flyzone": [],
     "human_review": "the path is valid but not aligned with human preference. go to the south of all of the polygons.",
     "human_msg": "Go to the south of all polygons\n"
+  },
+  "evaluation_number30": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.9, 33.2], [-97.5, 32.55], [-96.7, 32.55], [-96.4, 32.9], [-96.25588, 33.41547]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-6"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go to the north of all polygons to make the path valid and optimal",
+    "human_msg": "Find the shortest path possible!"
+  },
+  "evaluation_number31": {
+    "polygons": "poly1",
+    "solution_waypoints": "[[-97.97049, 33.35943], [-97.7, 33.44], [-97.0, 33.44], [-96.5, 33.35], [-96.3, 33.25], [-96.25043, 33.217]]",
+    "valid": false,
+    "violated_polygons": [
+      "poly1-7"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go to the north of all polygons.",
+    "human_msg": ""
+  },
+  "evaluation_number32": {
+    "polygons": "",
+    "solution_waypoints": "[[-122.22038, 47.47238], [-122.26, 47.468], [-122.285, 47.456], [-122.28924, 47.44734]]",
+    "valid": false,
+    "violated_polygons": [
+      "Starfire Sports",
+      "PowerPlant"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "The flight path intersects with the hazardous areas.",
+    "human_msg": ""
+  },
+  "evaluation_number33": {
+    "polygons": [
+      "PowerPlant",
+      "Starfire Sports",
+      "KingCountyAirport"
+    ],
+    "solution_waypoints": "[[-122.22038, 47.47238], [-122.28924, 47.44734]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Nice!",
+    "human_msg": ""
+  },
+  "evaluation_number34": {
+    "polygons": [
+      "PowerPlant",
+      "Starfire Sports",
+      "KingCountyAirport"
+    ],
+    "solution_waypoints": "[[-122.22038, 47.47238], [-122.23, 47.4705], [-122.24, 47.465], [-122.26, 47.455], [-122.28, 47.4485], [-122.28924, 47.44734]]",
+    "valid": false,
+    "violated_polygons": [
+      "PowerPlant"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Don't intersect with hazardous areas.",
+    "human_msg": ""
+  },
+  "evaluation_number35": {
+    "polygons": [
+      "Terminal",
+      "Hospital",
+      "WaterTowerPark",
+      "Starfire Sports",
+      "KingCountyAirport",
+      "Wind2",
+      "Airport",
+      "PowerPlant",
+      "Wind1"
+    ],
+    "solution_waypoints": "[[-122.33554, 47.60918], [-122.31, 47.5], [-122.277, 47.45552]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Great job!",
+    "human_msg": ""
+  },
+  "evaluation_number36": {
+    "polygons": [
+      "Terminal",
+      "WaterTowerPark",
+      "Airport",
+      "Hospital",
+      "PowerPlant",
+      "KingCountyAirport",
+      "Wind2",
+      "Starfire Sports",
+      "Wind1"
+    ],
+    "solution_waypoints": "[[-122.33554, 47.60918], [-122.315, 47.555], [-122.292, 47.52], [-122.275, 47.485], [-122.277, 47.45552]]",
+    "valid": false,
+    "violated_polygons": [
+      "KingCountyAirport",
+      "Wind1"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Terrible",
+    "human_msg": ""
+  },
+  "evaluation_number37": {
+    "polygons": [
+      "Terminal",
+      "WaterTowerPark",
+      "Airport",
+      "Hospital",
+      "PowerPlant",
+      "KingCountyAirport",
+      "Wind2",
+      "Starfire Sports",
+      "Wind1"
+    ],
+    "solution_waypoints": "[[-122.22038, 47.47238], [-122.26, 47.468], [-122.3, 47.468], [-122.32722, 47.46835]]",
+    "valid": false,
+    "violated_polygons": [
+      "Starfire Sports",
+      "PowerPlant",
+      "WaterTowerPark"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "terrible!",
+    "human_msg": ""
+  },
+  "evaluation_number38": {
+    "polygons": [
+      "Wind2",
+      "WaterTowerPark",
+      "Wind1",
+      "Hospital",
+      "PowerPlant"
+    ],
+    "solution_waypoints": "[[-122.3355, 47.6092], [-122.305, 47.61], [-122.305, 47.558], [-122.28, 47.5], [-122.27, 47.475], [-122.27, 47.46], [-122.277, 47.4555]]",
+    "valid": false,
+    "violated_polygons": [
+      "Wind1"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Your path should avoid wind1",
+    "human_msg": ""
+  },
+  "evaluation_number39": {
+    "polygons": [
+      "Wind2",
+      "Wind1",
+      "Starfire Sports",
+      "Terminal",
+      "Hospital",
+      "PowerPlant",
+      "WaterTowerPark"
+    ],
+    "solution_waypoints": "[[-122.33554, 47.60918], [-122.34, 47.595], [-122.35, 47.57], [-122.36, 47.54], [-122.345, 47.52], [-122.33, 47.5], [-122.315, 47.48], [-122.3, 47.47], [-122.29, 47.46], [-122.28924, 47.44734]]",
+    "valid": false,
+    "violated_polygons": [
+      "Terminal",
+      "WaterTowerPark"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "This is invalid",
+    "human_msg": ""
+  },
+  "evaluation_number40": {
+    "polygons": [
+      "Starfire Sports",
+      "Hospital",
+      "Wind1",
+      "Terminal",
+      "WaterTowerPark",
+      "PowerPlant",
+      "Wind2"
+    ],
+    "solution_waypoints": "[[-122.33554, 47.60918], [-122.345, 47.59065], [-122.34847, 47.573], [-122.34381, 47.56032], [-122.33869, 47.546], [-122.33, 47.532], [-122.31731, 47.52], [-122.30284, 47.50834], [-122.29641, 47.49429], [-122.271, 47.48205], [-122.254, 47.465], [-122.277, 47.45552]]",
+    "valid": false,
+    "violated_polygons": [
+      "Terminal",
+      "Wind1"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Wrong!",
+    "human_msg": ""
+  },
+  "evaluation_number41": {
+    "polygons": [
+      "Starfire Sports",
+      "Hospital",
+      "Wind1",
+      "Terminal",
+      "WaterTowerPark",
+      "PowerPlant",
+      "Wind2"
+    ],
+    "solution_waypoints": "[[-122.3355, 47.6092], [-122.3423, 47.5945], [-122.3555, 47.5736], [-122.34, 47.56], [-122.325, 47.54], [-122.31, 47.515], [-122.31, 47.49], [-122.3, 47.47], [-122.286, 47.46], [-122.277, 47.4555]]",
+    "valid": false,
+    "violated_polygons": [
+      "Terminal"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Avoid terminal then you're done.",
+    "human_msg": ""
+  },
+  "evaluation_number42": {
+    "polygons": [
+      "Hospital",
+      "Starfire Sports",
+      "PowerPlant",
+      "Airport",
+      "KingCountyAirport"
+    ],
+    "solution_waypoints": "[[-122.33554, 47.60918], [-122.33554, 47.55], [-122.33, 47.5], [-122.33, 47.43], [-122.289, 47.43], [-122.28924, 47.44734]]",
+    "valid": false,
+    "violated_polygons": [
+      "Airport"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Go to the north of Airport while staying to the west of KingCountryAirport.",
+    "human_msg": "go to the left of KingCountryAirport."
+  },
+  "evaluation_number43": {
+    "polygons": [
+      "Hospital",
+      "Starfire Sports",
+      "PowerPlant",
+      "Airport",
+      "KingCountyAirport"
+    ],
+    "solution_waypoints": "[[-122.33554, 47.60918], [-122.36, 47.512], [-122.29, 47.48], [-122.28924, 47.44734]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Nice! You could move the second waypoint more to the east but it's valid.",
+    "human_msg": "go to the left of KingCountryAirport."
+  },
+  "evaluation_number44": {
+    "polygons": [
+      "Hospital",
+      "Starfire Sports",
+      "PowerPlant",
+      "Airport",
+      "KingCountyAirport"
+    ],
+    "solution_waypoints": "[[-122.33554, 47.60918], [-122.25, 47.465], [-122.28924, 47.44734]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "You're on the west.",
+    "human_msg": "Go to the east of Starfire  Sports and PowerPlant while staying to west side of KingCountyAirport."
+  },
+  "evaluation_number45": {
+    "polygons": [
+      "Hospital",
+      "Starfire Sports",
+      "PowerPlant",
+      "Airport",
+      "KingCountyAirport"
+    ],
+    "solution_waypoints": "[[-122.3355, 47.6092], [-122.315, 47.58], [-122.3, 47.56], [-122.23, 47.48], [-122.23, 47.47], [-122.28924, 47.44734]]",
+    "valid": false,
+    "violated_polygons": [
+      "PowerPlant"
+    ],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "This is great. go a little bit more to the east.",
+    "human_msg": "Go to the east of Starfire  Sports and PowerPlant while staying to west side of KingCountyAirport."
+  },
+  "evaluation_number46": {
+    "polygons": [
+      "WaterTowerPark",
+      "Starfire Sports"
+    ],
+    "solution_waypoints": "[[-122.3355, 47.6092], [-122.2892, 47.4473]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Nice!",
+    "human_msg": ""
+  },
+  "evaluation_number47": {
+    "polygons": [
+      "WaterTowerPark",
+      "Starfire Sports"
+    ],
+    "solution_waypoints": "[[-122.22038, 47.47238], [-122.28924, 47.44734]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Good job!",
+    "human_msg": ""
+  },
+  "evaluation_number48": {
+    "polygons": [
+      "WaterTowerPark",
+      "Starfire Sports"
+    ],
+    "solution_waypoints": "[[-122.31791, 47.61503], [-122.28924, 47.44734]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Bro you're so good at this.",
+    "human_msg": "Find the shortest path."
   }
 }
