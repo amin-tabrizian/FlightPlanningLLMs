@@ -1,4 +1,4 @@
-from typing import List, Optional, Sequence, Union, Literal
+from typing import List, Optional, Sequence, Literal  # Removed unused import `Union`
 from sqlalchemy import and_, select
 from .models import Polygon, Scenario, Origin, Destination, ScenarioOutput
 from .db import Session
@@ -199,6 +199,7 @@ def query_similar_feedback(
     order: Literal['inc', 'dec'] = 'inc',
     threshold: Optional[float] = None,  
     threshold_op: Literal['>=', '<=', '>', '<', '==', '!='] = '>=',  
+    filter_by_validity: Optional[bool] = None, 
     n: Optional[int] = None
 ):
     """
@@ -213,6 +214,7 @@ def query_similar_feedback(
         order (Literal['inc', 'dec'], optional): Sorting order of results ('inc' for ascending, 'dec' for descending). Defaults to 'inc'.
         threshold (Optional[float], optional): Threshold value for filtering results based on similarity. Defaults to None.
         threshold_op (Literal['>=', '<=', '>', '<', '==', '!='], optional): Comparison operator for the threshold. Defaults to '>='.
+        filter_by_validity (Optional[bool], optional): Filter results based on validity. Defaults to None.
         n (Optional[int], optional): Maximum number of results to return. If None, returns all matching results. Defaults to None.
 
     Returns:
@@ -254,13 +256,18 @@ def query_similar_feedback(
             if threshold_filter is None:
                 raise ValueError(f"Unsupported threshold operation: {threshold_op}. Use one of '>=', '<=', '>', '<', '==', '!='.")
 
+        validity_filter = True
+        if filter_by_validity is not None:
+            validity_filter = ScenarioOutput.is_valid == filter_by_validity
+
         stmt = (
             select(ScenarioOutput, distance_expr)
             .where(
                 and_(*[ScenarioOutput.polygons.any(Polygon.id == p.id) for p in polygons]),
                 ScenarioOutput.origin == origin,
                 ScenarioOutput.destination == destination,
-                threshold_filter
+                threshold_filter,
+                validity_filter
             )
             .order_by(order_by_clause)
         ).limit(n)
