@@ -168,7 +168,6 @@ def store_output(
         origin = session.merge(origin)
         destination = session.merge(destination)
 
-        # Ensure polygon instances are attached to this session
         polygons = [session.merge(p) for p in polygons]
 
         assert origin.scenario == destination.scenario, "The origin and destination must belong to the same scenario."
@@ -199,7 +198,7 @@ def query_similar_feedback(
     metric: str = 'cosine_distance',  
     order: Literal['inc', 'dec'] = 'inc',
     threshold: Optional[float] = None,  
-    threshold_op: Literal['>=', '<=', '>', '<', '==', '!='] = '>=',  # Operation for threshold comparison
+    threshold_op: Literal['>=', '<=', '>', '<', '==', '!='] = '>=',  
     n: Optional[int] = None
 ):
     """
@@ -223,7 +222,6 @@ def query_similar_feedback(
         origin = session.merge(origin)
         destination = session.merge(destination)
 
-        # Ensure polygon instances are attached to this session
         polygons = [session.merge(p) for p in polygons]
 
         assert origin.scenario == destination.scenario, "The origin and destination must belong to the same scenario."
@@ -235,7 +233,6 @@ def query_similar_feedback(
         except AttributeError:
             raise ValueError(f"Unsupported metric: {metric}. Ensure it is a valid pgvec metric.")
 
-        # Determine the sorting order
         if order == 'inc':
             order_by_clause = distance_expr.asc()
         elif order == 'dec':
@@ -243,8 +240,7 @@ def query_similar_feedback(
         else:
             raise ValueError(f"Unsupported order: {order}. Use 'inc' or 'dec'.")
 
-        # Dynamically construct the threshold filter
-        threshold_filter = True  # Default to no filtering
+        threshold_filter = True  
         if threshold is not None:
             threshold_ops = {
                 '>=': distance_expr >= threshold,
@@ -269,10 +265,8 @@ def query_similar_feedback(
             .order_by(order_by_clause)
         ).limit(n)
 
-        # Execute the query and fetch feedbacks with distances
         similar_feedbacks = session.execute(stmt).unique().all()
 
-        # Separate the results into two lists: feedbacks and distances
         feedbacks, distances = zip(*similar_feedbacks) if similar_feedbacks else ([], [])
 
     return list(feedbacks), list(distances)
