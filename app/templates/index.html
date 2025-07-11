@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlightPath Pro - AI-Powered Flight Planning</title>
+    <title>FlightPath.ai - Multimodal Flight Planning Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -195,10 +195,12 @@
 
         /* Form Controls */
         .form-label-modern {
-            font-weight: 500;
-            color: var(--text-primary);
+            font-weight: 600;
+            color: var(--primary-color);
             margin-bottom: 0.5rem;
-            font-size: 0.95rem;
+            font-size: 1rem;
+            text-transform: capitalize;
+            letter-spacing: 0.02em;
         }
 
         .form-control-modern,
@@ -455,6 +457,7 @@
             height: auto;
             border-radius: var(--border-radius);
             box-shadow: var(--shadow-md);
+            margin: 0 auto;
         }
 
         /* Waypoints */
@@ -580,6 +583,20 @@
         .d-none-modern {
             display: none !important;
         }
+
+        /* Custom dropdown styling for No-Fly Zone Data */
+        #polygonSetDropdown.dropdown-toggle::after {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 0;
+        }
+
+        #polygonSetDropdown {
+            position: relative;
+            padding-right: 2.5rem;
+        }
     </style>
 </head>
 <body>
@@ -592,8 +609,8 @@
                         <i class="fas fa-route"></i>
                     </div>
                     <div class="brand-text">
-                        <span class="brand-name">FlightPath Pro</span>
-                        <span class="brand-tagline">AI-Powered Flight Planning</span>
+                                                        <span class="brand-name">FlightPath.ai</span>
+                                <span class="brand-tagline">Multimodal Flight Planning Engine</span>
                     </div>
                 </a>
             </nav>
@@ -638,10 +655,16 @@
                     <div class="card-body-modern">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="polygonSet" class="form-label-modern">Hazard Zone Set</label>
-                                <select class="form-select form-select-modern" id="polygonSet" required>
-                                    <option value="">Select hazard zones...</option>
-                                </select>
+                                <label class="form-label-modern">No-Fly Zone Data</label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="polygonSetDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Select no-fly zones...
+                                    </button>
+                                    <ul class="dropdown-menu w-100 p-2" id="polygonSetContainer" style="max-height: 200px; overflow-y: auto; min-width: 250px;">
+                                        <li><span class="dropdown-item-text text-muted">No no-fly zones available yet...</span></li>
+                                    </ul>
+                                </div>
+                                <small class="text-muted">Select one or more no-fly zones</small>
                             </div>
                             <div class="col-md-6">
                                 <label for="modelSelect" class="form-label-modern">AI Model</label>
@@ -695,7 +718,7 @@
                             </div>
                             <div class="col-12 mt-4">
                                 <button type="button" class="btn btn-modern btn-primary-modern w-100" id="runPlanning">
-                                    <i class="fas fa-rocket me-2"></i>
+                                    <i class="fas fa-plane me-2"></i>
                                     Generate Flight Plan
                                 </button>
                             </div>
@@ -788,7 +811,7 @@
                                 <!-- AI Explanation -->
                                 <div class="mb-4">
                                     <h6 class="fw-semibold mb-3">
-                                        <i class="fas fa-brain me-2 text-gradient"></i>AI Analysis
+                                        <i class="fas fa-brain me-2 text-gradient"></i>AI Reasoning
                                     </h6>
                                     <div class="card-modern">
                                         <div class="card-body-modern" id="aiExplanation">
@@ -813,14 +836,14 @@
                                 <!-- Download Links -->
                                 <div>
                                     <h6 class="fw-semibold mb-3">
-                                        <i class="fas fa-download me-2 text-gradient"></i>Download Results
+                                        <i class="fas fa-download me-2 text-gradient"></i>Export Results
                                     </h6>
                                     <div class="d-grid gap-2 d-md-flex">
                                         <a id="downloadKML" class="btn btn-modern btn-primary-modern flex-fill d-none-modern">
-                                            <i class="fas fa-download me-2"></i>Download KML
+                                            <i class="fas fa-download me-2"></i>Export to Google Earth
                                         </a>
                                         <a id="downloadTXT" class="btn btn-modern btn-secondary-modern flex-fill d-none-modern">
-                                            <i class="fas fa-file-alt me-2"></i>Download Waypoints
+                                            <i class="fas fa-file-alt me-2"></i>Export to Mission Planner
                                         </a>
                                     </div>
                                 </div>
@@ -836,15 +859,15 @@
                                     <div id="evaluationResults">
                                         <div class="d-flex gap-2 mb-3">
                                             <span class="badge badge-modern" id="validBadge">Pending</span>
-                                            <span class="badge badge-modern" id="originDestBadge">Endpoints: Pending</span>
+                                            <span class="badge badge-modern" id="noFlyZoneBadge">No-fly Zones: Pending</span>
                                         </div>
                                         <div class="row g-3">
                                             <div class="col-md-6">
-                                                <small class="text-muted d-block">Intersected Hazards:</small>
+                                                <small class="text-muted d-block">Intersected No-fly Zones:</small>
                                                 <span id="intersectedPolygons" class="fw-medium">None</span>
                                             </div>
                                             <div class="col-md-6">
-                                                <small class="text-muted d-block">Out of Bounds:</small>
+                                                <small class="text-muted d-block">Out of Airspace:</small>
                                                 <span id="outOfFlyzone" class="fw-medium">None</span>
                                             </div>
                                         </div>
@@ -854,10 +877,10 @@
                                 <!-- Coach Review Section -->
                                 <div id="coachSection" class="d-none-modern">
                                     <h6 class="fw-semibold mb-3">
-                                        <i class="fas fa-comment-dots me-2 text-gradient"></i>Expert Review
+                                        <i class="fas fa-comment-dots me-2 text-gradient"></i>Pilot Review
                                     </h6>
                                     <div class="mb-3">
-                                        <label for="humanReview" class="form-label-modern">
+                                        <label for="humanReview" class="form-label-modern" style="text-transform: none;">
                                             Provide feedback on this flight plan:
                                         </label>
                                         <textarea class="form-control form-control-modern" id="humanReview" rows="4" 
@@ -891,6 +914,56 @@
     <script>
         let currentKmlFilename = null;
         let currentFlightPlanData = null;
+        
+        // Business names for origins
+        const businessNames = [
+            'Walmart', 'Panera', 'SweetGreen', 'GNC', 'Dominos', 'Subway', 'Starbucks', 
+            'McDonalds', 'KFC', 'Pizza Hut', 'Taco Bell', 'Burger King', 'Chipotle', 
+            'Five Guys', 'In-N-Out', 'Chick-fil-A', 'Wendys', 'Arby\'s', 'Sonic', 
+            'Dairy Queen', 'Papa Johns', 'Little Caesars', 'Panda Express', 'Olive Garden',
+            'Red Lobster', 'Applebee\'s', 'TGI Friday\'s', 'Denny\'s', 'IHOP', 'Cracker Barrel',
+            'Target', 'CVS', 'Walgreens', 'Home Depot', 'Lowe\'s', 'Best Buy', 'GameStop',
+            'Barnes & Noble', 'Bed Bath & Beyond', 'Office Depot', 'Staples', 'PetSmart',
+            'Petco', 'AutoZone', 'O\'Reilly Auto Parts', 'Advance Auto Parts', 'Napa Auto Parts',
+            'Dollar Tree', 'Dollar General', 'Family Dollar', 'Big Lots'
+        ];
+        
+        // Customer names for destinations  
+        const customerNames = [
+            'Customer132', 'Customer151', 'Customer784', 'Customer567', 'Customer923', 'Customer445',
+            'Customer678', 'Customer234', 'Customer890', 'Customer156', 'Customer777', 'Customer334',
+            'Customer982', 'Customer123', 'Customer456', 'Customer789', 'Customer012', 'Customer345',
+            'Customer654', 'Customer987', 'Customer321', 'Customer098', 'Customer765', 'Customer432',
+            'Customer109', 'Customer876', 'Customer543', 'Customer210', 'Customer887', 'Customer654',
+            'Customer421', 'Customer198', 'Customer765', 'Customer432', 'Customer109', 'Customer876',
+            'Customer543', 'Customer210', 'Customer887', 'Customer654', 'Customer421', 'Customer198',
+            'Customer365', 'Customer742', 'Customer519', 'Customer286', 'Customer953', 'Customer620',
+            'Customer397', 'Customer174', 'Customer851', 'Customer528'
+        ];
+        
+        // Mapping objects
+        let originNameMap = {};
+        let destinationNameMap = {};
+        
+        function createNameMapping(originalNames, namesList, isCustomer = false) {
+            const mapping = {};
+            originalNames.forEach((name, index) => {
+                if (index < namesList.length) {
+                    mapping[name] = namesList[index];
+                } else {
+                    // Generate additional names if we run out
+                    if (isCustomer) {
+                        const baseNum = 1000 + (index - namesList.length);
+                        mapping[name] = `Customer${baseNum}`;
+                    } else {
+                        const cycleIndex = index % namesList.length;
+                        const suffix = Math.floor(index / namesList.length) + 1;
+                        mapping[name] = `${namesList[cycleIndex]} ${suffix}`;
+                    }
+                }
+            });
+            return mapping;
+        }
 
         // DOM Elements
         const uploadArea = document.getElementById('uploadArea');
@@ -983,15 +1056,89 @@
         }
 
         function populateDropdowns(data) {
-            // Populate polygon sets
-            const polygonSelect = document.getElementById('polygonSet');
-            polygonSelect.innerHTML = '<option value="">Select hazard zones...</option>';
-            data.polygon_sets.forEach(set => {
-                const option = document.createElement('option');
-                option.value = set;
-                option.textContent = set.toUpperCase();
-                polygonSelect.appendChild(option);
-            });
+            // Populate polygon sets as checkboxes in dropdown
+            const polygonContainer = document.getElementById('polygonSetContainer');
+            const polygonDropdown = document.getElementById('polygonSetDropdown');
+            polygonContainer.innerHTML = '';
+            
+            if (data.polygon_sets && data.polygon_sets.length > 0) {
+                // Add "Select All" checkbox at the top
+                const selectAllItem = document.createElement('li');
+                const selectAllDiv = document.createElement('div');
+                selectAllDiv.className = 'form-check py-1 border-bottom mb-2 pb-2';
+                
+                const selectAllCheckbox = document.createElement('input');
+                selectAllCheckbox.className = 'form-check-input';
+                selectAllCheckbox.type = 'checkbox';
+                selectAllCheckbox.id = 'polygon_select_all';
+                selectAllCheckbox.addEventListener('change', function() {
+                    const allCheckboxes = document.querySelectorAll('input[name="polygonSets"]');
+                    allCheckboxes.forEach(checkbox => {
+                        checkbox.checked = this.checked;
+                    });
+                    updateDropdownText();
+                });
+                
+                const selectAllLabel = document.createElement('label');
+                selectAllLabel.className = 'form-check-label fw-bold';
+                selectAllLabel.setAttribute('for', 'polygon_select_all');
+                selectAllLabel.textContent = 'Select All';
+                
+                selectAllDiv.appendChild(selectAllCheckbox);
+                selectAllDiv.appendChild(selectAllLabel);
+                selectAllItem.appendChild(selectAllDiv);
+                polygonContainer.appendChild(selectAllItem);
+                
+                // Prevent dropdown from closing when clicking on select all
+                selectAllItem.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+
+                data.polygon_sets.forEach(set => {
+                    const listItem = document.createElement('li');
+                    
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'form-check py-1';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.className = 'form-check-input';
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `polygon_${set}`;
+                    checkbox.value = set;
+                    checkbox.name = 'polygonSets';
+                    checkbox.addEventListener('change', function() {
+                        updateDropdownText();
+                        updateSelectAllState();
+                    });
+                    
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.setAttribute('for', `polygon_${set}`);
+                    label.textContent = set;
+                    
+                    checkboxDiv.appendChild(checkbox);
+                    checkboxDiv.appendChild(label);
+                    listItem.appendChild(checkboxDiv);
+                    polygonContainer.appendChild(listItem);
+                    
+                    // Prevent dropdown from closing when clicking on checkbox
+                    listItem.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    });
+                });
+                
+                // Reset dropdown text
+                polygonDropdown.textContent = 'Select no-fly zones...';
+            } else {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = '<span class="dropdown-item-text text-muted">No no-fly zones found in this file</span>';
+                polygonContainer.appendChild(listItem);
+                polygonDropdown.textContent = 'No zones available';
+            }
+
+            // Create name mappings
+            originNameMap = createNameMapping(data.origins, businessNames, false);
+            destinationNameMap = createNameMapping(data.destinations, customerNames, true);
 
             // Populate origins
             const originSelect = document.getElementById('originSelect');
@@ -999,7 +1146,7 @@
             data.origins.forEach(origin => {
                 const option = document.createElement('option');
                 option.value = origin;
-                option.textContent = origin;
+                option.textContent = originNameMap[origin];
                 originSelect.appendChild(option);
             });
 
@@ -1009,9 +1156,41 @@
             data.destinations.forEach(destination => {
                 const option = document.createElement('option');
                 option.value = destination;
-                option.textContent = destination;
+                option.textContent = destinationNameMap[destination];
                 destinationSelect.appendChild(option);
             });
+        }
+        
+        function updateDropdownText() {
+            const checkedBoxes = document.querySelectorAll('input[name="polygonSets"]:checked');
+            const dropdownButton = document.getElementById('polygonSetDropdown');
+            
+            if (checkedBoxes.length === 0) {
+                dropdownButton.textContent = 'Select no-fly zones...';
+            } else if (checkedBoxes.length === 1) {
+                dropdownButton.textContent = checkedBoxes[0].nextElementSibling.textContent;
+            } else {
+                dropdownButton.textContent = `${checkedBoxes.length} zones selected`;
+            }
+        }
+
+        function updateSelectAllState() {
+            const selectAllCheckbox = document.getElementById('polygon_select_all');
+            const allCheckboxes = document.querySelectorAll('input[name="polygonSets"]');
+            const checkedBoxes = document.querySelectorAll('input[name="polygonSets"]:checked');
+            
+            if (selectAllCheckbox) {
+                if (checkedBoxes.length === 0) {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                } else if (checkedBoxes.length === allCheckboxes.length) {
+                    selectAllCheckbox.checked = true;
+                    selectAllCheckbox.indeterminate = false;
+                } else {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = true;
+                }
+            }
         }
 
         function resetLayout() {
@@ -1052,7 +1231,8 @@
 
         // Run Planning
         document.getElementById('runPlanning').addEventListener('click', function() {
-            const polygonSet = document.getElementById('polygonSet').value;
+            const checkedBoxes = document.querySelectorAll('input[name="polygonSets"]:checked');
+            const selectedPolygonSets = Array.from(checkedBoxes).map(checkbox => checkbox.value);
             const model = document.getElementById('modelSelect').value;
             const origin = document.getElementById('originSelect').value;
             const destination = document.getElementById('destinationSelect').value;
@@ -1061,8 +1241,8 @@
             const memory = document.getElementById('memoryEnabled').checked;
             const coach = document.getElementById('coachEnabled').checked;
 
-            if (!polygonSet || !model || !origin || !destination) {
-                showNotification('Please fill in all required fields', 'error');
+            if (selectedPolygonSets.length === 0 || !model || !origin || !destination) {
+                showNotification('Please select at least one no-fly zone and fill in all required fields', 'error');
                 return;
             }
 
@@ -1076,7 +1256,7 @@
 
             const requestData = {
                 kml_filename: currentKmlFilename,
-                polygon_set: polygonSet,
+                polygon_set: selectedPolygonSets,
                 model: model,
                 origin: origin,
                 destination: destination,
@@ -1098,7 +1278,7 @@
                 // Hide loading and restore button
                 loadingOverlay.classList.add('d-none-modern');
                 runButton.classList.remove('loading');
-                runButton.innerHTML = '<i class="fas fa-rocket me-2"></i>Generate Flight Plan';
+                runButton.innerHTML = '<i class="fas fa-plane me-2"></i>Generate Flight Plan';
                 
                 if (data.success) {
                     // Activate results panel
@@ -1116,7 +1296,7 @@
                 // Hide loading and restore button
                 loadingOverlay.classList.add('d-none-modern');
                 runButton.classList.remove('loading');
-                runButton.innerHTML = '<i class="fas fa-rocket me-2"></i>Generate Flight Plan';
+                runButton.innerHTML = '<i class="fas fa-plane me-2"></i>Generate Flight Plan';
                 
                 console.error('Error:', error);
                 showNotification('Planning failed due to network error', 'error');
@@ -1150,13 +1330,30 @@
             const waypointsList = document.getElementById('waypointsList');
             waypointsList.innerHTML = '';
             if (data.response_waypoints && data.response_waypoints.length > 0) {
+                const originName = document.getElementById('originSelect').value;
+                const destinationName = document.getElementById('destinationSelect').value;
+                
+                // Get friendly names from mappings
+                const originFriendlyName = originNameMap[originName] || originName;
+                const destinationFriendlyName = destinationNameMap[destinationName] || destinationName;
+                
                 data.response_waypoints.forEach((waypoint, index) => {
                     const waypointDiv = document.createElement('div');
                     waypointDiv.className = 'waypoint-item';
+                    
+                    let waypointLabel;
+                    if (index === 0) {
+                        waypointLabel = `Origin (${originFriendlyName})`;
+                    } else if (index === data.response_waypoints.length - 1) {
+                        waypointLabel = `Destination (${destinationFriendlyName})`;
+                    } else {
+                        waypointLabel = `Waypoint ${index + 1}`;
+                    }
+                    
                     waypointDiv.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center">
-                            <strong>Waypoint ${index + 1}</strong>
-                            <small class="text-muted">${waypoint[1].toFixed(6)}, ${waypoint[0].toFixed(6)}</small>
+                            <strong>${waypointLabel}</strong>
+                            <small class="text-muted">[${waypoint[1].toFixed(6)}, ${waypoint[0].toFixed(6)}]</small>
                         </div>
                     `;
                     waypointsList.appendChild(waypointDiv);
@@ -1169,10 +1366,10 @@
                 validBadge.textContent = data.evaluation.valid ? 'Valid Path' : 'Invalid Path';
                 validBadge.className = `badge badge-modern ${data.evaluation.valid ? 'badge-success-modern' : 'badge-danger-modern'}`;
 
-                const originDestBadge = document.getElementById('originDestBadge');
-                const isConnected = data.evaluation.origin_dest_ok && data.evaluation.origin_dest_ok[0] && data.evaluation.origin_dest_ok[1];
-                originDestBadge.textContent = `Endpoints: ${isConnected ? 'Connected' : 'Disconnected'}`;
-                originDestBadge.className = `badge badge-modern ${isConnected ? 'badge-success-modern' : 'badge-danger-modern'}`;
+                const noFlyZoneBadge = document.getElementById('noFlyZoneBadge');
+                const hasIntersections = data.evaluation.intersected_polygons && data.evaluation.intersected_polygons.length > 0;
+                noFlyZoneBadge.textContent = `No-fly Zones: ${hasIntersections ? 'Violated' : 'Clear'}`;
+                noFlyZoneBadge.className = `badge badge-modern ${hasIntersections ? 'badge-danger-modern' : 'badge-success-modern'}`;
 
                 document.getElementById('intersectedPolygons').textContent = 
                     data.evaluation.intersected_polygons?.length > 0 ? 

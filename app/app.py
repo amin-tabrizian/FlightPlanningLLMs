@@ -14,11 +14,18 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from utils import get_coordinates_from_kml, convert_to_float_dict, prompt_generator, convert_waypoints, compute_total_path_length, convert_waypoints_to_dict, PlannerSolution, mode_detector
 from solver import response_generator
-from img_generator import generate_img
+from osm_img_generator import generate_osm_img
+# from img_generator import generate_osm_img
 from coach import rule_based_evaluation, llm_evaluation
 from update_memory import update_memory, sample_from_memory
 from utils import greedy_merge
 import simplekml
+
+# Configure logging for Flask app
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
@@ -83,7 +90,6 @@ def extract_polygon_sets_from_kml(kml_path):
         polygon_sets = set()
         origins = []
         destinations = []
-        
         for placemark_name in all_placemark_names:
             if placemark_name.startswith('poly'):
                 # Extract polygon set number (e.g., poly1-1 -> poly1)
@@ -93,6 +99,13 @@ def extract_polygon_sets_from_kml(kml_path):
                 origins.append(placemark_name)
             elif placemark_name.startswith('Destination'):
                 destinations.append(placemark_name)
+            else:
+                # Filter out 'FlyZone' from polygon sets
+                if placemark_name != 'FlyZone':
+                    polygon_sets.add(placemark_name)
+
+            
+            
         
         return sorted(list(polygon_sets)), sorted(origins), sorted(destinations)
     except Exception as e:
@@ -142,15 +155,17 @@ def run_planning():
         data = request.get_json()
         
         kml_filename = data.get('kml_filename')
-        polygon_set = data.get('polygon_set')
+        polygon_sets = data.get('polygon_set', [])  # Now expecting a list
         origin = data.get('origin')
         destination = data.get('destination')
         model_name = data.get('model')
         human_msg = data.get('human_msg', '')
         memory_enabled = data.get('memory', False)
         coach_enabled = data.get('coach', False)
-        prompt_key = data.get('prompt_key', DEFAULT_PROMPT_KEY)        
-        if not all([kml_filename, polygon_set, origin, destination, model_name]):
+        prompt_key = data.get('prompt_key', DEFAULT_PROMPT_KEY)
+        
+        
+        if not all([kml_filename, polygon_sets, origin, destination, model_name]) or len(polygon_sets) == 0:
             return jsonify({'success': False, 'error': 'Missing required fields'})
         
         # Get the system message from prompts
@@ -168,8 +183,8 @@ def run_planning():
         if not os.path.exists(kml_path):
             return jsonify({'success': False, 'error': 'KML file not found'})
         
-        # Extract place marks - find all polygons with the selected set
-        place_marks = [polygon_set, origin, destination]
+        # Extract place marks - find all polygons with the selected sets
+        place_marks = polygon_sets + [origin, destination]
         
         # Extract and convert coordinates
         coordinates_dict = get_coordinates_from_kml(kml_path, place_marks)
@@ -183,7 +198,11 @@ def run_planning():
             original_cwd = os.getcwd()
             try:
                 os.chdir('..')
-                sample_from_memory(place_marks[0], memory_path='memory_database.json', n_samples=2)
+                # Use the first polygon set for memory sampling
+                if 'poly' in polygon_sets[0]:
+                    sample_from_memory(polygon_sets[0], memory_path='memory_database.json', n_samples=2)
+                else:
+                    sample_from_memory(polygon_sets, memory_path='memory_database.json', n_samples=2)
             finally:
                 os.chdir(original_cwd)
         
@@ -218,11 +237,20 @@ def run_planning():
         
         # Generate simplified waypoints if valid (same as main.py lines 98-101)
         simplified_waypoints = None
+        image_generated = False
+        
         if evaluation.valid:
             simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
-            generate_img(float_coordinates, simplified_waypoints, image_path, evaluation)
+            image_generated = generate_osm_img(float_coordinates, simplified_waypoints, image_path, evaluation)
         else:
-            generate_img(float_coordinates, waypoints_list, image_path, evaluation)
+            image_generated = generate_osm_img(float_coordinates, waypoints_list, image_path, evaluation)
+        
+        # Log image generation status
+        if image_generated:
+            logging.info(f"Flight plan image generated successfully: {image_path}")
+        else:
+            logging.warning(f"Failed to generate flight plan image: {image_path}")
+            # Image path will still be sent to frontend, but file won't exist
         
         # Use simplified waypoints if available, otherwise use raw waypoints
         final_waypoints = simplified_waypoints if simplified_waypoints else waypoints_list
@@ -256,10 +284,33 @@ def run_planning():
         # Save KML file
         polygon_kml.save(solution_path)
         
-        # Create text file with final waypoints
+        # Create Mission Planner format text file
         with open(text_path, 'w') as f:
-            for wp in final_waypoints:
-                f.write(f"{wp[0]},{wp[1]}\n")
+            # Header line
+            f.write("QGC WPL 110\n")
+            
+            # Find origin coordinates for takeoff and return to launch
+            origin_coords = None
+            for name, coords in float_coordinates.items():
+                if 'Origin' in name:
+                    origin_coords = coords[0]  # Take first coordinate pair [lon, lat]
+                    break
+            
+            if origin_coords is None:
+                # Fallback to first waypoint if no origin found
+                origin_coords = final_waypoints[0]
+            
+            # First waypoint: Takeoff to 90m at origin
+            f.write(f"0\t1\t0\t22\t0\t0\t0\t0\t{origin_coords[1]}\t{origin_coords[0]}\t90\t1\n")
+            
+            # Navigation waypoints (skip first waypoint which is origin, start from index 1)
+            waypoint_index = 1
+            for wp in final_waypoints[1:]:  # Skip the first waypoint (origin)
+                f.write(f"{waypoint_index}\t0\t3\t16\t0\t0\t0\t0\t{wp[1]}\t{wp[0]}\t90\t1\n")
+                waypoint_index += 1
+            
+            # Return to launch
+            f.write(f"{waypoint_index}\t0\t3\t20\t0\t0\t0\t0\t0\t0\t0\t1\n")
         
         # Initialize human_review logic (same as main.py lines 131-134)
         if not hasattr(evaluation, 'human_review') or evaluation.human_review == "":
@@ -278,12 +329,12 @@ def run_planning():
             "fly_zone": evaluation.out_pts,        
             "avoid_polygons": evaluation.polys,  
             "model": model_name,
-            "mode": mode_detector(place_marks),              
+            # "mode": mode_detector(place_marks),              
             "memory": memory_enabled,
             "solution_waypoints": final_waypoints, 
-            "polygon_number": place_marks[0],   
+            "polygon_number": polygon_sets,   
             "human_preference": human_msg,
-            "orig_dest": [place_marks[1], place_marks[2]],
+            "orig_dest": [place_marks[-2], place_marks[-1]],
             "aligned_with_human_preference": evaluation.human_review
         }
         
@@ -365,5 +416,9 @@ if __name__ == '__main__':
     # Use run.py instead for proper configuration
     print("Please use 'python run.py' to start the application")
     print("This ensures proper environment configuration and SSH access")
+    
+    # For production deployment, run directly
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port)
 
  
