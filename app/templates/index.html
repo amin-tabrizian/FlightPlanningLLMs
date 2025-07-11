@@ -7,6 +7,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -459,6 +461,23 @@
             box-shadow: var(--shadow-md);
             margin: 0 auto;
         }
+        
+        /* Interactive Map */
+        .interactive-map {
+            height: 500px;
+            width: 100%;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            margin: 0 auto;
+        }
+        
+        .map-controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
 
         /* Waypoints */
         .waypoint-item {
@@ -767,11 +786,22 @@
                         <div class="tab-content" id="resultTabContent">
                             <!-- Overview Tab -->
                             <div class="tab-pane fade show active" id="overview" role="tabpanel">
-                                <!-- Flight Plan Image -->
+                                <!-- Interactive Map -->
                                 <div class="text-center mb-4">
                                     <div class="flight-plan-placeholder" id="flightPlanPlaceholder">
                                         <i class="fas fa-map fa-3x text-muted mb-3"></i>
                                         <p class="text-muted">Flight plan visualization will appear here</p>
+                                    </div>
+                                    <div id="interactiveMapContainer" style="display: none;">
+                                        <div id="interactiveMap" class="interactive-map"></div>
+                                        <div class="map-controls">
+                                            <button id="saveFlightPlan" class="btn btn-success btn-sm">
+                                                <i class="fas fa-save me-1"></i>Update Flight Plan
+                                            </button>
+                                            <button id="resetWaypoints" class="btn btn-secondary btn-sm">
+                                                <i class="fas fa-undo me-1"></i>Reset Waypoints
+                                            </button>
+                                        </div>
                                     </div>
                                     <img id="flightPlanImage" class="flight-plan-image" 
                                          src="" alt="Flight Plan Visualization" style="display: none;">
@@ -911,9 +941,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let currentKmlFilename = null;
         let currentFlightPlanData = null;
+        let interactiveMap = null;
+        let waypointMarkers = [];
+        let flightPathLine = null;
+        let polygonLayers = [];
+        let originalWaypoints = [];
+        let originalEvaluation = null;
         
         // Business names for origins
         const businessNames = [
@@ -1360,8 +1398,11 @@
                 });
             }
 
-            // Display evaluation results
+            // Display evaluation results and store original for reset functionality
             if (data.evaluation) {
+                // Store original evaluation for reset functionality
+                originalEvaluation = JSON.parse(JSON.stringify(data.evaluation));
+                
                 const validBadge = document.getElementById('validBadge');
                 validBadge.textContent = data.evaluation.valid ? 'Valid Path' : 'Invalid Path';
                 validBadge.className = `badge badge-modern ${data.evaluation.valid ? 'badge-success-modern' : 'badge-danger-modern'}`;
@@ -1399,6 +1440,293 @@
             if (data.coach_enabled) {
                 document.getElementById('coachSection').classList.remove('d-none-modern');
             }
+            
+            // Show interactive map if map data is available
+            if (data.map_data) {
+                displayInteractiveMap(data.map_data);
+            }
+        }
+        
+        function displayInteractiveMap(mapData) {
+            console.log('DEBUG - Map data received:', mapData);
+            
+            // Hide placeholder and static image
+            document.getElementById('flightPlanPlaceholder').style.display = 'none';
+            document.getElementById('flightPlanImage').style.display = 'none';
+            
+            // Show interactive map container
+            document.getElementById('interactiveMapContainer').style.display = 'block';
+            
+            // Initialize map if not already done
+            if (!interactiveMap) {
+                initializeInteractiveMap(mapData);
+            } else {
+                updateInteractiveMap(mapData);
+            }
+        }
+        
+        function initializeInteractiveMap(mapData) {
+            console.log('DEBUG - Initializing map with center:', mapData.center, 'zoom:', mapData.zoom);
+            console.log('DEBUG - Waypoints:', mapData.waypoints);
+            
+            // Initialize the map
+            interactiveMap = L.map('interactiveMap').setView(mapData.center, mapData.zoom);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(interactiveMap);
+            
+            // Store original waypoints for reset functionality
+            originalWaypoints = JSON.parse(JSON.stringify(mapData.waypoints));
+            
+            // Add map layers
+            addMapLayers(mapData);
+        }
+        
+        function updateInteractiveMap(mapData) {
+            // Clear existing layers
+            clearMapLayers();
+            
+            // Update original waypoints
+            originalWaypoints = JSON.parse(JSON.stringify(mapData.waypoints));
+            
+            // Re-add layers
+            addMapLayers(mapData);
+            
+            // Fit map to bounds
+            if (mapData.waypoints.length > 0) {
+                const group = new L.featureGroup(waypointMarkers);
+                interactiveMap.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+        
+        function addMapLayers(mapData) {
+            // Add flyzone
+            if (mapData.flyzone) {
+                const flyzone = L.polygon(mapData.flyzone.coordinates, {
+                    color: 'green',
+                    fillColor: 'green',
+                    fillOpacity: 0.1,
+                    weight: 2
+                }).addTo(interactiveMap);
+                polygonLayers.push(flyzone);
+                flyzone.bindPopup('<strong>Flight Zone</strong><br/>Safe flying area');
+            }
+            
+            // Add no-fly zones
+            if (mapData.polygons) {
+                mapData.polygons.forEach(polygon => {
+                    const poly = L.polygon(polygon.coordinates, {
+                        color: 'red',
+                        fillColor: 'red',
+                        fillOpacity: 0.3,
+                        weight: 2
+                    }).addTo(interactiveMap);
+                    polygonLayers.push(poly);
+                    poly.bindPopup(`<strong>No-fly Zone</strong><br/>${polygon.name}<br/>Restricted area`);
+                    
+                    // Add permanent label for no-fly zone
+                    const polyCenter = poly.getBounds().getCenter();
+                    const polyLabel = L.marker(polyCenter, {
+                        icon: L.divIcon({
+                            className: 'nfz-label',
+                            html: `<div style="background: rgba(220,20,60,0.9); color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">${polygon.name}</div>`,
+                            iconSize: [80, 20],
+                            iconAnchor: [40, 10]
+                        })
+                    }).addTo(interactiveMap);
+                    polygonLayers.push(polyLabel);
+                });
+            }
+            
+            // Add origin marker
+            if (mapData.origin) {
+                const originMarker = L.marker(mapData.origin.coordinates, {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(interactiveMap);
+                originMarker.bindPopup(`<strong>🛫 Origin</strong><br/>${mapData.origin.name}<br/>Starting point`);
+                waypointMarkers.push(originMarker);
+                
+                // Add permanent label for origin
+                const originLabel = L.marker([mapData.origin.coordinates[0] + 0.001, mapData.origin.coordinates[1]], {
+                    icon: L.divIcon({
+                        className: 'origin-label',
+                        html: '<div style="background: rgba(0,128,0,0.9); color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">🛫 Origin</div>',
+                        iconSize: [80, 22],
+                        iconAnchor: [0, 11]
+                    })
+                }).addTo(interactiveMap);
+                polygonLayers.push(originLabel);
+            }
+            
+            // Add destination marker
+            if (mapData.destination) {
+                const destMarker = L.marker(mapData.destination.coordinates, {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(interactiveMap);
+                destMarker.bindPopup(`<strong>🛬 Destination</strong><br/>${mapData.destination.name}<br/>End point`);
+                waypointMarkers.push(destMarker);
+                
+                // Add permanent label for destination
+                const destLabel = L.marker([mapData.destination.coordinates[0] + 0.001, mapData.destination.coordinates[1]], {
+                    icon: L.divIcon({
+                        className: 'dest-label',
+                        html: '<div style="background: rgba(0,100,200,0.9); color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">🛬 Destination</div>',
+                        iconSize: [110, 22],
+                        iconAnchor: [0, 11]
+                    })
+                }).addTo(interactiveMap);
+                polygonLayers.push(destLabel);
+            }
+            
+            // Add waypoint markers
+            mapData.waypoints.forEach((waypoint, index) => {
+                const isOrigin = index === 0;
+                const isDestination = index === mapData.waypoints.length - 1;
+                
+                let iconColor = 'red'; // intermediate waypoints
+                if (isOrigin) iconColor = 'green';
+                else if (isDestination) iconColor = 'blue';
+                
+                const marker = L.marker([waypoint.lat, waypoint.lng], {
+                    draggable: waypoint.draggable && !isOrigin && !isDestination, // Only intermediate waypoints are draggable
+                    icon: L.icon({
+                        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${iconColor}.png`,
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(interactiveMap);
+                
+                marker.waypointIndex = index;
+                marker.bindPopup(`Waypoint ${index + 1}: [${waypoint.lat.toFixed(6)}, ${waypoint.lng.toFixed(6)}]`);
+                
+                // Add drag event listeners for intermediate waypoints
+                if (!isOrigin && !isDestination) {
+                    marker.on('dragend', function(e) {
+                        updateWaypointPosition(index, e.target.getLatLng());
+                    });
+                }
+                
+                waypointMarkers.push(marker);
+            });
+            
+            // Add flight path line
+            const waypointCoords = mapData.waypoints.map(wp => [wp.lat, wp.lng]);
+            flightPathLine = L.polyline(waypointCoords, {
+                color: 'black',
+                weight: 3,
+                opacity: 0.8
+            }).addTo(interactiveMap);
+            
+            // Add violating segments
+            if (mapData.violating_segments) {
+                mapData.violating_segments.forEach(segment => {
+                    L.polyline(segment, {
+                        color: 'red',
+                        weight: 5,
+                        opacity: 0.8
+                    }).addTo(interactiveMap);
+                });
+            }
+            
+            // Add out points
+            if (mapData.out_points) {
+                mapData.out_points.forEach(point => {
+                    L.marker(point, {
+                        icon: L.icon({
+                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41],
+                            popupAnchor: [1, -34],
+                            shadowSize: [41, 41]
+                        })
+                    }).addTo(interactiveMap).bindPopup('Out of Flyzone');
+                });
+            }
+        }
+        
+        function clearMapLayers() {
+            // Clear waypoint markers
+            waypointMarkers.forEach(marker => {
+                interactiveMap.removeLayer(marker);
+            });
+            waypointMarkers = [];
+            
+            // Clear flight path line
+            if (flightPathLine) {
+                interactiveMap.removeLayer(flightPathLine);
+                flightPathLine = null;
+            }
+            
+            // Clear polygon layers
+            polygonLayers.forEach(layer => {
+                interactiveMap.removeLayer(layer);
+            });
+            polygonLayers = [];
+        }
+        
+        function updateWaypointPosition(index, newLatLng) {
+            // Update the waypoint position in our data
+            const mapData = currentFlightPlanData.map_data;
+            mapData.waypoints[index].lat = newLatLng.lat;
+            mapData.waypoints[index].lng = newLatLng.lng;
+            
+            // Update the flight path line
+            const waypointCoords = mapData.waypoints.map(wp => [wp.lat, wp.lng]);
+            if (flightPathLine) {
+                flightPathLine.setLatLngs(waypointCoords);
+            }
+            
+            // Update the popup
+            waypointMarkers[index].setPopupContent(`Waypoint ${index + 1}: [${newLatLng.lat.toFixed(6)}, ${newLatLng.lng.toFixed(6)}]`);
+            
+            // Update metrics in real-time (optional)
+            updateMetricsPreview(mapData.waypoints);
+        }
+        
+        function updateMetricsPreview(waypoints) {
+            // Calculate approximate distance (simple calculation for preview)
+            let totalDistance = 0;
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                const lat1 = waypoints[i].lat;
+                const lng1 = waypoints[i].lng;
+                const lat2 = waypoints[i + 1].lat;
+                const lng2 = waypoints[i + 1].lng;
+                
+                // Haversine formula for distance calculation
+                const R = 6371; // Earth's radius in kilometers
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLng = (lng2 - lng1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLng/2) * Math.sin(dLng/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = R * c;
+                
+                totalDistance += distance;
+            }
+            
+            // Update distance display with preview indicator
+            document.getElementById('totalDistance').textContent = totalDistance.toFixed(2) + ' (preview)';
         }
 
         // Submit Review
@@ -1409,9 +1737,17 @@
                 return;
             }
 
+            // Get current waypoints from the map (reflects user's current state)
+            let currentWaypoints = [];
+            if (currentFlightPlanData && currentFlightPlanData.map_data && currentFlightPlanData.map_data.waypoints) {
+                // Convert current map waypoints to [lon, lat] format for backend
+                currentWaypoints = currentFlightPlanData.map_data.waypoints.map(wp => [wp.lng, wp.lat]);
+            }
+
             const reviewData = {
                 review: review,
-                flight_plan_data: currentFlightPlanData
+                flight_plan_data: currentFlightPlanData,
+                current_waypoints: currentWaypoints  // Add current waypoints state
             };
 
             fetch('/submit_review', {
@@ -1435,6 +1771,207 @@
                 showNotification('Failed to submit review due to network error', 'error');
             });
         });
+        
+        // Save Flight Plan Event Handler
+        document.getElementById('saveFlightPlan').addEventListener('click', function() {
+            if (!currentFlightPlanData || !currentFlightPlanData.map_data) {
+                showNotification('No flight plan data to save', 'error');
+                return;
+            }
+            
+            const saveButton = this;
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<div class="spinner-border spinner-border-sm me-1" role="status"></div>Updating...';
+            
+            const requestData = {
+                waypoints: currentFlightPlanData.map_data.waypoints,
+                timestamp: currentFlightPlanData.map_data.timestamp,
+                float_coordinates: currentFlightPlanData.float_coordinates
+            };
+            
+            fetch('/save_updated_waypoints', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the metrics
+                    document.getElementById('totalDistance').textContent = data.total_length;
+                    document.getElementById('waypointCount').textContent = data.waypoint_count;
+                    
+                    // Update evaluation badges
+                    const validBadge = document.getElementById('validBadge');
+                    validBadge.textContent = data.evaluation.valid ? 'Valid Path' : 'Invalid Path';
+                    validBadge.className = `badge badge-modern ${data.evaluation.valid ? 'badge-success-modern' : 'badge-danger-modern'}`;
+                    
+                    const noFlyZoneBadge = document.getElementById('noFlyZoneBadge');
+                    const hasIntersections = data.evaluation.intersected_polygons && data.evaluation.intersected_polygons.length > 0;
+                    noFlyZoneBadge.textContent = `No-fly Zones: ${hasIntersections ? 'Violated' : 'Clear'}`;
+                    noFlyZoneBadge.className = `badge badge-modern ${hasIntersections ? 'badge-danger-modern' : 'badge-success-modern'}`;
+                    
+                    // Update download links
+                    document.getElementById('downloadKML').href = data.solution_path;
+                    document.getElementById('downloadTXT').href = data.text_path;
+                    
+                    // Update waypoints list in Details tab
+                    updateWaypointsList(data.updated_waypoints);
+                    
+                    // Update evaluation details
+                    updateEvaluationDetails(data.evaluation);
+                    
+                    showNotification('Flight plan updated successfully!', 'success');
+                } else {
+                    showNotification('Failed to save flight plan: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Failed to save flight plan due to network error', 'error');
+            })
+            .finally(() => {
+                saveButton.disabled = false;
+                saveButton.innerHTML = '<i class="fas fa-save me-1"></i>Update Flight Plan';
+            });
+        });
+        
+        // Reset Waypoints Event Handler
+        document.getElementById('resetWaypoints').addEventListener('click', function() {
+            if (!currentFlightPlanData || !originalWaypoints || originalWaypoints.length === 0) {
+                showNotification('No original waypoints to reset to', 'error');
+                return;
+            }
+            
+            const resetButton = this;
+            resetButton.disabled = true;
+            resetButton.innerHTML = '<div class="spinner-border spinner-border-sm me-1" role="status"></div>Resetting...';
+            
+            // Reset waypoints to original positions
+            currentFlightPlanData.map_data.waypoints = JSON.parse(JSON.stringify(originalWaypoints));
+            
+            // Update the map
+            updateInteractiveMap(currentFlightPlanData.map_data);
+            
+            // Regenerate export files with original waypoints by calling save endpoint
+            const requestData = {
+                waypoints: originalWaypoints,
+                timestamp: currentFlightPlanData.map_data.timestamp,
+                float_coordinates: currentFlightPlanData.float_coordinates
+            };
+            
+            fetch('/save_updated_waypoints', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reset distance display
+                    document.getElementById('totalDistance').textContent = data.total_length;
+                    
+                    // Reset waypoints list to original
+                    updateWaypointsList(currentFlightPlanData.response_waypoints);
+                    
+                    // Reset evaluation to original
+                    if (originalEvaluation) {
+                        updateEvaluationDetails(originalEvaluation);
+                    }
+                    
+                    // Update download links to the regenerated files
+                    document.getElementById('downloadKML').href = data.solution_path;
+                    document.getElementById('downloadTXT').href = data.text_path;
+                    
+                    showNotification('Waypoints and export files reset to original state', 'success');
+                } else {
+                    // Fallback to local reset if server call fails
+                    document.getElementById('totalDistance').textContent = currentFlightPlanData.total_length;
+                    updateWaypointsList(currentFlightPlanData.response_waypoints);
+                    if (originalEvaluation) {
+                        updateEvaluationDetails(originalEvaluation);
+                    }
+                    showNotification('Waypoints reset (export files may not be updated)', 'warning');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Fallback to local reset if server call fails
+                document.getElementById('totalDistance').textContent = currentFlightPlanData.total_length;
+                updateWaypointsList(currentFlightPlanData.response_waypoints);
+                if (originalEvaluation) {
+                    updateEvaluationDetails(originalEvaluation);
+                }
+                showNotification('Waypoints reset (export files may not be updated)', 'warning');
+            })
+            .finally(() => {
+                resetButton.disabled = false;
+                resetButton.innerHTML = '<i class="fas fa-undo me-1"></i>Reset Waypoints';
+            });
+        });
+        
+        // Helper function to update waypoints list in Details tab
+        function updateWaypointsList(waypoints) {
+            const waypointsList = document.getElementById('waypointsList');
+            waypointsList.innerHTML = '';
+            
+            if (waypoints && waypoints.length > 0) {
+                const originName = document.getElementById('originSelect').value;
+                const destinationName = document.getElementById('destinationSelect').value;
+                
+                // Get friendly names from mappings if available
+                const originFriendlyName = (typeof originNameMap !== 'undefined' && originNameMap[originName]) || originName;
+                const destinationFriendlyName = (typeof destinationNameMap !== 'undefined' && destinationNameMap[destinationName]) || destinationName;
+                
+                waypoints.forEach((waypoint, index) => {
+                    const waypointDiv = document.createElement('div');
+                    waypointDiv.className = 'waypoint-item';
+                    
+                    let waypointLabel;
+                    if (index === 0) {
+                        waypointLabel = `Origin (${originFriendlyName})`;
+                    } else if (index === waypoints.length - 1) {
+                        waypointLabel = `Destination (${destinationFriendlyName})`;
+                    } else {
+                        waypointLabel = `Waypoint ${index + 1}`;
+                    }
+                    
+                    waypointDiv.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>${waypointLabel}</strong>
+                            <small class="text-muted">[${waypoint[0].toFixed(6)}, ${waypoint[1].toFixed(6)}]</small>
+                        </div>
+                    `;
+                    waypointsList.appendChild(waypointDiv);
+                });
+            }
+        }
+        
+        // Helper function to update evaluation details in Evaluation tab
+        function updateEvaluationDetails(evaluation) {
+            // Update main evaluation badges
+            const validBadge = document.getElementById('validBadge');
+            validBadge.textContent = evaluation.valid ? 'Valid Path' : 'Invalid Path';
+            validBadge.className = `badge badge-modern ${evaluation.valid ? 'badge-success-modern' : 'badge-danger-modern'}`;
+
+            const noFlyZoneBadge = document.getElementById('noFlyZoneBadge');
+            const hasIntersections = evaluation.intersected_polygons && evaluation.intersected_polygons.length > 0;
+            noFlyZoneBadge.textContent = `No-fly Zones: ${hasIntersections ? 'Violated' : 'Clear'}`;
+            noFlyZoneBadge.className = `badge badge-modern ${hasIntersections ? 'badge-danger-modern' : 'badge-success-modern'}`;
+
+            // Update detailed evaluation info
+            document.getElementById('intersectedPolygons').textContent = 
+                evaluation.intersected_polygons?.length > 0 ? 
+                evaluation.intersected_polygons.join(', ') : 'None';
+
+            document.getElementById('outOfFlyzone').textContent = 
+                evaluation.out_of_flyzone?.length > 0 ? 
+                `${evaluation.out_of_flyzone.length} waypoints` : 'None';
+        }
     </script>
 </body>
 </html>

@@ -1,1 +1,65 @@
-{}
+{
+  "evaluation_number53": {
+    "polygons": [
+      "KingCountyAirport",
+      "Wind1",
+      "Hospital",
+      "PowerPlant",
+      "WaterTowerPark",
+      "Starfire Sports",
+      "Airport",
+      "Wind2",
+      "Terminal"
+    ],
+    "solution_waypoints": "[[-122.3355, 47.6092], [-122.32, 47.5795], [-122.31, 47.556], [-122.285, 47.544], [-122.28, 47.51], [-122.27439880371095, 47.46453992268503], [-122.277, 47.4555]]",
+    "valid": false,
+    "violated_polygons": [
+      "Wind1"
+    ],
+    "violating_segments": [
+      [
+        [
+          [
+            -122.28,
+            47.51
+          ],
+          [
+            -122.27439880371095,
+            47.46453992268503
+          ]
+        ]
+      ]
+    ],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Mediocre",
+    "human_msg": ""
+  },
+  "evaluation_number52": {
+    "polygons": [
+      "KingCountyAirport",
+      "Wind1",
+      "Hospital",
+      "PowerPlant",
+      "WaterTowerPark",
+      "Starfire Sports",
+      "Airport",
+      "Wind2",
+      "Terminal"
+    ],
+    "solution_waypoints": "[[-122.3355, 47.6092], [-122.32, 47.5795], [-122.31, 47.556], [-122.285, 47.544], [-122.28, 47.51], [-122.26444244384767, 47.48403288391224], [-122.277, 47.4555]]",
+    "valid": true,
+    "violated_polygons": [],
+    "violating_segments": [],
+    "in_origin_dest": [
+      true,
+      true
+    ],
+    "waypoints_outside_flyzone": [],
+    "human_review": "Good!",
+    "human_msg": ""
+  }
+}
