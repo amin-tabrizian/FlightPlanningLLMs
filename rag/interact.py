@@ -1,6 +1,6 @@
-from typing import List, Optional, Sequence, Literal  # Removed unused import `Union`
+from typing import List, Optional, Sequence, Literal, Tuple  # Removed unused import `Union`
 from sqlalchemy import and_, select
-from .models import Polygon, Scenario, Origin, Destination, ScenarioOutput
+from .models import NoFlyZone, Scenario, Origin, Destination, ScenarioOutput
 from .db import Session
 import hashlib
 import xml.etree.ElementTree as ET
@@ -47,12 +47,20 @@ def load_scenario(file_path: str) -> Scenario:
             name = name_elem.text.strip().lower()
 
             if placemark.find('kml:Polygon', ns) is not None:
-                if name == 'flyzone':
-                    continue
-                
-                scenario.polygons.append(
-                    Polygon(name=name, scenario=scenario)
-                )
+                coordinates_elem = placemark.find('.//kml:coordinates', ns)
+                if coordinates_elem is not None:
+                    coordinates_text = coordinates_elem.text.strip()
+                    # Parse coordinates (assumes format: lon,lat,alt lon,lat,alt ...)
+                    coords_lonlat = [
+                        tuple(map(float, c.split(',')[:2]))          # (lon, lat)
+                        for c in coordinates_text.split()
+                    ]
+                    if name == 'flyzone':
+                        scenario.fly_zone_bounds_lonlat = coords_lonlat
+                    else:
+                        scenario.no_fly_zones.append(
+                            NoFlyZone(name=name, scenario=scenario, bounds_lonlat=coords_lonlat)
+                        )
             else:
                 assert "origin" in name or "destination" in name, f'Invalid name encountered: "{name}". Expected the name to contain "Origin#" or "Destination#".'
                 relative_number = re.search(r'\d+', name)
@@ -60,19 +68,24 @@ def load_scenario(file_path: str) -> Scenario:
                 relative_number = int(relative_number.group())
                 assert isinstance(relative_number, int), f'Invalid relative number extracted from name: "{name}". Expected a valid integer identifier.'
                 
+                coordinates_elem = placemark.find('.//kml:coordinates', ns)
+                assert coordinates_elem is not None, f'Missing coordinates for {name}.'
+                coordinates_text = coordinates_elem.text.strip()
+                lonlat = tuple(map(float, coordinates_text.split(',')[:2]))  # Extract (lon, lat)
+
                 if "origin" in name:
                     scenario.origins.append(
-                        Origin(scenario=scenario, relative_id=relative_number)
+                        Origin(scenario=scenario, relative_id=relative_number, lonlat=lonlat)
                     )
                 elif "destination" in name:
                     scenario.destinations.append(
-                        Destination(scenario=scenario, relative_id=relative_number)
+                        Destination(scenario=scenario, relative_id=relative_number, lonlat=lonlat)
                     )
 
         session.add(scenario)
 
-        session.flush()  
         session.commit()
+        session.refresh(scenario)
         return scenario
 
 
@@ -113,37 +126,34 @@ def get_destination(scenario: Scenario, id: int):
         ).scalar_one_or_none()
     return destination
 
-def get_polygons(scenario: Scenario, name: List[str]):
+def get_no_fly_zones(scenario: Scenario, names: List[str]):
     """
-    Retrieve polygons by their names within a given scenario.
+    Retrieve no-fly zones by their names within a given scenario.
 
     Args:
-        scenario (Scenario): The scenario to which the polygons belong.
-        name (List[str]): List of polygon names to retrieve.
+        scenario (Scenario): The scenario to which the no-fly zones belong.
+        name (List[str]): List of no-fly zone names to retrieve.
 
     Returns:
-        List[Polygon]: A list of polygon objects matching the given names.
+        List[NoFlyZone]: A list of no-fly zone objects matching the given names.
     """
+    names = [name.lower() for name in names]
+
     with Session() as session:
         scenario = session.merge(scenario)  # Ensure scenario is attached to the session
-        polygons = session.execute(
-            select(Polygon).where(Polygon.scenario_id == scenario.id, Polygon.name.in_(name))
+        no_fly_zones = session.execute(
+            select(NoFlyZone).where(NoFlyZone.scenario_id == scenario.id, NoFlyZone.name.in_(names))
         ).scalars().all()
-    return polygons
+    return no_fly_zones
 
 
 def store_output(
         origin: Origin, 
         destination: Destination, 
-        polygons: Sequence[Polygon], 
+        no_fly_zones: Sequence[NoFlyZone], 
         human_preference: str, 
         feedback: str,
-        solution_waypoints: List[List[float]],
-        is_valid: bool,
-        in_origin: bool,
-        in_destination: bool,
-        waypoints_outside_flyzone: List[List[float]] = [],
-        violated_polygons: List[List[Polygon]] = []
+        solution_waypoints: List[Tuple[float, float]],
     ):
     """
     Store the output of a scenario solution in the database.
@@ -151,15 +161,10 @@ def store_output(
     Args:
         origin (Origin): The origin of the scenario.
         destination (Destination): The destination of the scenario.
-        polygons (Sequence[Polygon]): Polygons involved in the scenario.
+        no_fly_zones (Sequence[NoFlyZone]): No-fly zones involved in the scenario.
         human_preference (str): Human preference description.
         feedback (str): Feedback provided for the solution.
-        solution_waypoints (List[List[float]]): Waypoints of the solution.
-        is_valid (bool): Whether the solution is valid.
-        in_origin (bool): Whether the solution starts in the origin.
-        in_destination (bool): Whether the solution ends in the destination.
-        waypoints_outside_flyzone (List[List[float]], optional): Waypoints outside the flyzone. Defaults to [].
-        violated_polygons (List[List[Polygon]], optional): Polygons violated by the solution. Defaults to [].
+        solution_waypoints (List[Tuple[float, float]]): Waypoints of the solution, formatted as a list of [lon, lat] pairs.
 
     Returns:
         ScenarioOutput: The stored feedback object.
@@ -168,32 +173,27 @@ def store_output(
         origin = session.merge(origin)
         destination = session.merge(destination)
 
-        polygons = [session.merge(p) for p in polygons]
+        no_fly_zones = [session.merge(zone) for zone in no_fly_zones]
 
         assert origin.scenario == destination.scenario, "The origin and destination must belong to the same scenario."
         feedback = ScenarioOutput(
             origin=origin,
             destination=destination,
-            polygons=polygons,
+            no_fly_zones=no_fly_zones,
             human_preference=human_preference,
             feedback=feedback,
-            solution_waypoints=solution_waypoints,
-            is_valid=is_valid,
-            in_origin=in_origin,
-            in_destination=in_destination,
-            waypoints_outside_flyzone=waypoints_outside_flyzone,
-            violated_polygons=violated_polygons,
+            solution_waypoints=solution_waypoints
         )
         session.add(feedback)
 
-        session.flush()  
         session.commit()
+        session.refresh(feedback)
     return feedback
 
 def query_similar_feedback(
     origin: Origin,
     destination: Destination,
-    polygons: Sequence[Polygon],
+    no_fly_zones: Sequence[NoFlyZone],
     human_preference: str,
     metric: str = 'cosine_distance',  
     order: Literal['inc', 'dec'] = 'inc',
@@ -208,7 +208,7 @@ def query_similar_feedback(
     Args:
         origin (Origin): The origin of the scenario.
         destination (Destination): The destination of the scenario.
-        polygons (Sequence[Polygon]): Polygons involved in the scenario.
+        no_fly_zones (Sequence[NoFlyZone]): No-fly zones involved in the scenario.
         human_preference (str): Human preference description.
         metric (str, optional): Metric to calculate similarity (e.g., cosine_distance). Defaults to 'cosine_distance'.
         order (Literal['inc', 'dec'], optional): Sorting order of results ('inc' for ascending, 'dec' for descending). Defaults to 'inc'.
@@ -224,7 +224,7 @@ def query_similar_feedback(
         origin = session.merge(origin)
         destination = session.merge(destination)
 
-        polygons = [session.merge(p) for p in polygons]
+        no_fly_zones = [session.merge(zone) for zone in no_fly_zones]
 
         assert origin.scenario == destination.scenario, "The origin and destination must belong to the same scenario."
 
@@ -263,7 +263,7 @@ def query_similar_feedback(
         stmt = (
             select(ScenarioOutput, distance_expr)
             .where(
-                and_(*[ScenarioOutput.polygons.any(Polygon.id == p.id) for p in polygons]),
+                and_(*[ScenarioOutput.no_fly_zones.any(NoFlyZone.id == zone.id) for zone in no_fly_zones]),
                 ScenarioOutput.origin == origin,
                 ScenarioOutput.destination == destination,
                 threshold_filter,
