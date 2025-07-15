@@ -2,6 +2,7 @@ import json
 import os
 import logging
 from utils import Evaluation, convert_waypoints
+from rag.interact import load_scenario, get_origin, get_destination, store_output, get_polygons, query_similar_feedback
 
 def update_memory(coords, waypoints, evaluation: Evaluation, human_msg):
     """
@@ -119,3 +120,28 @@ def sample_from_memory(poly_name, memory_path='memory_database.json', n_samples=
         json.dump(filtered_memory_data, f, indent=2)
 
 
+
+def update_memory_rag(kmml_path, coords, waypoints, evaluation, human_msg):
+    origin = next((k for k in coords.keys() if 'Origin' in k), 'Origin1')
+    destination = next((k for k in coords.keys() if 'Destination' in k), 'Destination1')
+    coords.pop(origin)
+    coords.pop(destination)
+    scenario = load_scenario(kmml_path)
+    polygons = get_polygons(scenario, coords.keys())
+    origin = get_origin(scenario, int(origin[-1]))
+    destination = get_destination(scenario, int(destination[-1]))
+    store_output(origin=origin, destination=destination, polygons=polygons, 
+                human_preference=human_msg, feedback=evaluation.human_review, solution_waypoints=waypoints, 
+                is_valid=evaluation.valid, in_destination=evaluation.orig_dest_ok[1], in_origin=evaluation.orig_dest_ok[0],
+                waypoints_outside_flyzone=evaluation.out_pts, violated_polygons=evaluation.polys)
+
+def query_memory_rag(kmml_path, coords, waypoints, evaluation, human_msg):
+    origin = next((k for k in coords.keys() if 'Origin' in k), 'Origin1')
+    destination = next((k for k in coords.keys() if 'Destination' in k), 'Destination1')
+    coords.pop(origin)
+    coords.pop(destination)
+    scenario = load_scenario(kmml_path)
+    polygons = get_polygons(scenario, coords.keys())
+    origin = get_origin(scenario, int(origin[-1]))
+    destination = get_destination(scenario, int(destination[-1]))
+    memory_data =query_similar_feedback(origin=origin, destination=destination, polygons=polygons, human_preference=human_msg)

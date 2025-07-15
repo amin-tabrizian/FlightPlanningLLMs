@@ -124,6 +124,7 @@ def get_polygons(scenario: Scenario, name: List[str]):
     Returns:
         List[Polygon]: A list of polygon objects matching the given names.
     """
+    name = [n.lower() for n in name]
     with Session() as session:
         scenario = session.merge(scenario)  # Ensure scenario is attached to the session
         polygons = session.execute(
@@ -143,7 +144,7 @@ def store_output(
         in_origin: bool,
         in_destination: bool,
         waypoints_outside_flyzone: List[List[float]] = [],
-        violated_polygons: List[List[Polygon]] = []
+        violated_polygons: List[Polygon] = []
     ):
     """
     Store the output of a scenario solution in the database.
@@ -159,7 +160,7 @@ def store_output(
         in_origin (bool): Whether the solution starts in the origin.
         in_destination (bool): Whether the solution ends in the destination.
         waypoints_outside_flyzone (List[List[float]], optional): Waypoints outside the flyzone. Defaults to [].
-        violated_polygons (List[List[Polygon]], optional): Polygons violated by the solution. Defaults to [].
+        violated_polygons (List[Polygon], optional): Polygons violated by the solution. Defaults to [].
 
     Returns:
         ScenarioOutput: The stored feedback object.
@@ -200,7 +201,7 @@ def query_similar_feedback(
     threshold: Optional[float] = None,  
     threshold_op: Literal['>=', '<=', '>', '<', '==', '!='] = '>=',  
     filter_by_validity: Optional[bool] = None, 
-    n: Optional[int] = None
+    n: Optional[int] = 2
 ):
     """
     Query similar feedbacks from the database based on the given parameters.

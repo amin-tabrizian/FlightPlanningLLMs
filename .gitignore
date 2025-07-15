@@ -13,3 +13,5 @@ coach_example/
 *memory*
 app/venv/
 app/.env
+.env
+setup_env.sh

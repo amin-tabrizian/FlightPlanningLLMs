@@ -241,8 +241,9 @@ def run_planning():
         image_generated = False
         
         if evaluation.valid:
-            simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
-            image_generated = generate_osm_img(float_coordinates, simplified_waypoints, image_path, evaluation)
+            pass
+            # simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
+            # image_generated = generate_osm_img(float_coordinates, simplified_waypoints, image_path, evaluation)
         else:
             image_generated = generate_osm_img(float_coordinates, waypoints_list, image_path, evaluation)
         
@@ -256,7 +257,7 @@ def run_planning():
         # Use simplified waypoints if available, otherwise use raw waypoints
         final_waypoints = simplified_waypoints if simplified_waypoints else waypoints_list
         final_waypoint_count = len(simplified_waypoints) if simplified_waypoints else len(response.waypoints)
-        
+        logging.info(f"DEBUG - Final waypoints: {final_waypoints}")
         # Recalculate total path length with final waypoints
         final_total_length = compute_total_path_length(final_waypoints)
         
@@ -320,6 +321,9 @@ def run_planning():
             evaluation.human_review = "False"
         
         solution = PlannerSolution()
+        import csv
+
+        # Prepare core metrics dictionary
         solution.core_metrics = {
             "distance_km": final_total_length,       
             "num_waypoints": final_waypoint_count,      
@@ -335,9 +339,53 @@ def run_planning():
             "solution_waypoints": final_waypoints, 
             "polygon_number": polygon_sets,   
             "human_preference": human_msg,
-            "orig_dest": [place_marks[-2], place_marks[-1]],
-            "aligned_with_human_preference": evaluation.human_review
+            "orig_dest": [place_marks[-2], place_marks[-1]],        }
+
+        # Write core metrics to CSV file
+        csv_file = "solution_core_metrics.csv"
+        # Prepare a flat dict for CSV (convert lists/dicts to strings)
+        csv_row = {
+            "distance_km": final_total_length,
+            "num_waypoints": final_waypoint_count,
+            "response_time_s": end_time - start_time,
+            "energy": 0.0,
+            "is_valid": evaluation.valid,
+            "orig_dest_ok": evaluation.orig_dest_ok,
+            "fly_zone": evaluation.out_pts,
+            "avoid_polygons": str(evaluation.polys),
+            "model": model_name,
+            "memory": memory_enabled,
+            "solution_waypoints": str(final_waypoints),
+            "polygon_number": str(polygon_sets),
+            "human_preference": human_msg,
+            "orig_dest_names": str([place_marks[-2], place_marks[-1]]),
         }
+        csv_headers = [
+            "distance_km",
+            "num_waypoints",
+            "response_time_s",
+            "energy",
+            "is_valid",
+            "orig_dest_ok",
+            "fly_zone",
+            "avoid_polygons",
+            "model",
+            "memory",
+            "solution_waypoints",
+            "polygon_number",
+            "human_preference",
+            "orig_dest_names",
+        ]
+        # Check if file exists
+        file_exists = os.path.isfile(csv_file)
+        try:
+            with open(csv_file, 'a', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=csv_headers)
+                if not file_exists:
+                    writer.writeheader()
+                writer.writerow(csv_row)
+        except Exception as e:
+            logging.error(f"Error writing to CSV: {e}")
         
         # Generate interactive map data
         map_data = generate_interactive_map(float_coordinates, final_waypoints, image_path, evaluation, timestamp)
