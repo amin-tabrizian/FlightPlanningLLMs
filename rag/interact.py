@@ -258,7 +258,7 @@ def query_similar_feedback(
 
         validity_filter = True
         if filter_by_validity is not None:
-            validity_filter = ScenarioOutput.is_valid == filter_by_validity
+            validity_filter = ScenarioOutput._is_valid == filter_by_validity
 
         stmt = (
             select(ScenarioOutput, distance_expr)
