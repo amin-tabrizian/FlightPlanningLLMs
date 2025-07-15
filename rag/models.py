@@ -121,17 +121,9 @@ class ScenarioOutput(Base):
         self._is_valid = self.in_origin and self.in_destination and self.in_flyzone and self.has_valid_segments
 
     _solution_waypoints: Mapped[List[Tuple[float, float]]] = mapped_column("solution_waypoints", JSON, nullable=False)
-    _is_valid: Mapped[bool] = mapped_column("is_valid", Boolean, nullable=False, server_default="false") # cache for querying 
+    is_valid: Mapped[bool] = mapped_column("is_valid", Boolean, nullable=False, server_default="false") # cache for querying 
 
-    @property
-    def is_valid(self):
-        """
-        Checks if the scenario output is valid.
 
-        Returns:
-            bool: True if the output is valid, False otherwise.
-        """
-        return self._is_valid
 
     @property
     def in_flyzone(self):
