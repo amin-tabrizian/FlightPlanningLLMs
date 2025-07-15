@@ -1,41 +1,105 @@
+from typing import List, Tuple
 import requests # type: ignore
 from sqlalchemy.orm import declarative_base, mapped_column, relationship, Mapped
 from sqlalchemy import Boolean, Integer, Text, ForeignKey, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSON
 from pgvector.sqlalchemy import Vector # type: ignore
+import shapely # type: ignore
+from utils import haversine_distance
+from functools import cached_property
 
 Base = declarative_base()
 
+TOLERANCE = 1e-3
+
+
 class Scenario(Base):
+    """
+    Represents a flight planning scenario.
+
+    Attributes:
+        id (int): Unique identifier for the scenario.
+        file_hash (str): Hash of the scenario file for uniqueness.
+        no_fly_zones (list[NoFlyZone]): List of no-fly zones associated with the scenario.
+        origins (list[Origin]): List of origin points in the scenario.
+        destinations (list[Destination]): List of destination points in the scenario.
+        fly_zone_bounds_lonlat (List[Tuple[float, float]]): Coordinates defining the fly zone boundary.
+    """
+
     __tablename__ = "scenarios"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     file_hash: Mapped[str] = mapped_column(Text, unique=True)
 
-    polygons: Mapped[list["Polygon"]] = relationship("Polygon", back_populates="scenario", cascade="all, delete-orphan")
+    no_fly_zones: Mapped[list["NoFlyZone"]] = relationship("NoFlyZone", back_populates="scenario", cascade="all, delete-orphan")
     origins: Mapped[list["Origin"]] = relationship("Origin", back_populates="scenario", cascade="all, delete-orphan")
     destinations: Mapped[list["Destination"]] = relationship("Destination", back_populates="scenario", cascade="all, delete-orphan")
+    fly_zone_bounds_lonlat: Mapped[List[Tuple[float, float]]] = mapped_column(JSON, nullable=False) 
+
+    @property
+    def flyzone_bounds(self):
+        """
+        Returns the fly zone boundary as a Shapely Polygon.
+
+        Returns:
+            shapely.Polygon: The fly zone boundary.
+        """
+        return shapely.Polygon(self.fly_zone_bounds_lonlat)
 
 
-class Polygon(Base):
-    __tablename__ = "polygons"
+class NoFlyZone(Base):
+    """
+    Represents a no-fly zone within a scenario.
+
+    Attributes:
+        id (int): Unique identifier for the no-fly zone.
+        scenario_id (int): ID of the associated scenario.
+        name (str): Name of the no-fly zone.
+        bounds_lonlat (List[Tuple[float, float]]): Coordinates defining the no-fly zone boundary.
+    """
+
+    __tablename__ = "no_fly_zones"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     scenario_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenarios.id"))
     name: Mapped[str] = mapped_column(Text)
+    bounds_lonlat: Mapped[List[Tuple[float, float]]] = mapped_column(JSON, nullable=False)
 
-    # Add a relationship to Scenario
-    scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="polygons")
-    selections: Mapped[list["SelectedPolygon"]] = relationship("SelectedPolygon", back_populates="polygon")
-    violations: Mapped[list["ViolatedPolygon"]] = relationship("ViolatedPolygon", back_populates="polygon")
+    scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="no_fly_zones")
+    selections: Mapped[list["SelectedNoFlyZone"]] = relationship("SelectedNoFlyZone", back_populates="no_fly_zone")
 
     scenario_outputs: Mapped[list["ScenarioOutput"]] = relationship(
         "ScenarioOutput",
-        secondary="selected_polygons",
-        back_populates="polygons"
+        secondary="selected_no_fly_zones",
+        back_populates="no_fly_zones",
+        overlaps="selections"
     )
+
+    @property
+    def bounds(self):
+        """
+        Returns the no-fly zone boundary as a Shapely Polygon.
+
+        Returns:
+            shapely.Polygon: The no-fly zone boundary.
+        """
+        return shapely.Polygon(self.bounds_lonlat)
 
 
 class ScenarioOutput(Base):
+    """
+    Represents the output of a scenario solution.
+
+    Attributes:
+        id (int): Unique identifier for the scenario output.
+        origin_id (int): ID of the origin point.
+        destination_id (int): ID of the destination point.
+        _embedding (list[float]): Embedding vector for the human preference.
+        _human_preference (str): Human preference description.
+        feedback (str): Feedback provided for the solution.
+        solution_waypoints (List[Tuple[float, float]]): Waypoints of the solution.
+    """
+
     __tablename__ = "scenario_outputs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -47,65 +111,188 @@ class ScenarioOutput(Base):
     _human_preference: Mapped[str] = mapped_column("human_preference", Text)
     feedback: Mapped[str] = mapped_column(Text)
 
-    solution_waypoints: Mapped[list[list[float]]] = mapped_column(Text, default=lambda: [])
-    waypoints_outside_flyzone: Mapped[list[list[float]]] = mapped_column(Text, default=lambda: [])
+    @property
+    def solution_waypoints(self) -> List[Tuple[float, float]]:
+        return self._solution_waypoints
 
-    is_valid: Mapped[bool] = mapped_column(Boolean)
-    in_origin: Mapped[bool] = mapped_column(Boolean)
-    in_destination: Mapped[bool] = mapped_column(Boolean)
+    @solution_waypoints.setter
+    def solution_waypoints(self, value: List[Tuple[float, float]]) -> None:
+        self._solution_waypoints = value
+        self._is_valid = self.in_origin and self.in_destination and self.in_flyzone and self.has_valid_segments
 
-    
-    violated_polygons: Mapped[list["Polygon"]] = relationship(
-        "Polygon",
-        secondary="violated_polygons",
+    _solution_waypoints: Mapped[List[Tuple[float, float]]] = mapped_column("solution_waypoints", JSON, nullable=False)
+    is_valid: Mapped[bool] = mapped_column("is_valid", Boolean, nullable=False, server_default="false") # cache for querying 
+
+
+
+    @property
+    def in_flyzone(self):
+        """
+        Checks if the flight path is within the fly zone.
+
+        Returns:
+            bool: True if the flight path is within the fly zone, False otherwise.
+        """
+        return len(self.waypoints_outside_flyzone) == 0
+
+    @cached_property
+    def waypoints_outside_flyzone(self) -> list[Tuple[float]]:
+        """
+        Returns a list of waypoints that are outside the flyzone.
+        """
+        flyzone = self.origin.scenario.flyzone_bounds
+        return [waypoint for waypoint in self.solution_waypoints if not shapely.Point(waypoint).within(flyzone)]
+
+    @property
+    def has_valid_segments(self):
+        """
+        Checks if the flight path has valid segments.
+
+        Returns:
+            bool: True if all flight segments are valid, False otherwise.
+        """
+        return len(self.violating_segments) == 0
+
+
+
+    @cached_property
+    def _segment_violations(self):
+        """
+        Helper method to identify violating segments and violated no-fly zones.
+        Returns a tuple of (violating_segments, violated_no_fly_zones).
+        """
+        violating_segments = []
+        violated_zones = set()
+
+        for i in range(len(self.solution_waypoints) - 1):
+            segment = shapely.LineString([
+                self.solution_waypoints[i],
+                self.solution_waypoints[i + 1]
+            ])
+
+            for zone in self.no_fly_zones:
+                if segment.intersects(zone.bounds):
+                    violating_segments.append((
+                        self.solution_waypoints[i], self.solution_waypoints[i + 1]
+                    ))
+                    violated_zones.add(zone.name)
+
+        return violating_segments, list(violated_zones)
+
+    @property
+    def violating_segments(self) -> list[List[Tuple[Tuple[float, float], Tuple[float, float]]]]:
+        """
+        Returns a list of violating flight segments based on the selected no-fly zones.
+        """
+        return self._segment_violations[0]
+
+    @property
+    def violated_no_fly_zones(self) -> list[str]:
+        """
+        Returns a list of names of no-fly zones that are violated by the flight segments.
+        """
+        return self._segment_violations[1]
+
+    @property
+    def in_origin(self):
+        """
+        Checks if the first waypoint is within the origin point.
+
+        Returns:
+            bool: True if the first waypoint is within the origin, False otherwise.
+        """
+        origin_error = haversine_distance(self.solution_waypoints[0], self.origin.lonlat)
+        return origin_error <= TOLERANCE
+
+    @property
+    def in_destination(self):
+        """
+        Checks if the last waypoint is within the destination point.
+
+        Returns:
+            bool: True if the last waypoint is within the destination, False otherwise.
+        """
+        destination_error = haversine_distance(self.solution_waypoints[-1], self.destination.lonlat)
+        return destination_error <= TOLERANCE
+
+    no_fly_zones: Mapped[list["NoFlyZone"]] = relationship(
+        "NoFlyZone",
+        secondary="selected_no_fly_zones",
         back_populates="scenario_outputs",
-        lazy="joined"
-    )
-    polygons: Mapped[list["Polygon"]] = relationship(
-        "Polygon",
-        secondary="selected_polygons",
-        back_populates="scenario_outputs",
-        lazy="joined"
+        lazy="joined",
+        overlaps="selections"
     )
 
     @property
-    def polygon_names(self):
-        return [polygon.name for polygon in self.polygons]
-    
-    @property
-    def violated_polygon_names(self):
-        return [polygon.name for polygon in self.violated_polygons]
+    def no_fly_zone_names(self):
+        """
+        Returns a list of names of the no-fly zones associated with the scenario output.
 
-    origin = relationship(
+        Returns:
+            list[str]: List of no-fly zone names.
+        """
+        return [zone.name for zone in self.no_fly_zones]
+
+    origin: Mapped["Origin"] = relationship(
         "Origin",
         back_populates="scenario_outputs",
         lazy="joined"
     )
-    destination = relationship(
+    destination: Mapped["Destination"] = relationship(
         "Destination",
         back_populates="scenario_outputs",
         lazy="joined"
     )
-   
-    selected_polygon_links: Mapped[list["SelectedPolygon"]] = relationship("SelectedPolygon", back_populates="scenario_output", lazy="joined")
-    violated_polygon_links: Mapped[list["ViolatedPolygon"]] = relationship("ViolatedPolygon", back_populates="scenario_output", lazy="joined")
+
+    selected_polygon_links: Mapped[list["SelectedNoFlyZone"]] = relationship(
+        "SelectedNoFlyZone",
+        back_populates="scenario_output",
+        lazy="joined",
+        overlaps="no_fly_zones,scenario_outputs"
+    )
 
     @property
     def human_preference(self) -> str:
+        """
+        Gets the human preference description.
+
+        Returns:
+            str: The human preference description.
+        """
         return self._human_preference
 
     @human_preference.setter
     def human_preference(self, value: str) -> None:
+        """
+        Sets the human preference description and generates the corresponding embedding.
+
+        Args:
+            value (str): The human preference description.
+        """
         self._human_preference = value
         self._embedding = self.generate_embedding(value)
 
     @property
     def embedding(self) -> list[float]:
+        """
+        Gets the embedding vector for the human preference.
+
+        Returns:
+            list[float]: The embedding vector.
+        """
         return self._embedding
-    
 
     @staticmethod
     def generate_embedding(value: str) -> list[float]:
+        """
+        Generates an embedding vector for the given human preference description.
+
+        Args:
+            value (str): The human preference description.
+
+        Returns:
+            list[float]: The generated embedding vector.
+        """
         url = 'http://localhost:11434/api/embeddings'
         payload = {
             "model": 'mxbai-embed-large',
@@ -117,34 +304,39 @@ class ScenarioOutput(Base):
         return response.json()['embedding']
 
 
-    @staticmethod
-    def validate_same_scenario(session, origin_id: int, destination_id: int) -> None:
-        """
-        Raises ValueError if the origin and destination locations are not in the same scenario.
-        """
-        from .models import Location
-        origin = session.query(Location).filter_by(id=origin_id).first()
-        destination = session.query(Location).filter_by(id=destination_id).first()
-        if not origin or not destination:
-            raise ValueError("Origin or destination location does not exist.")
-        if origin.scenario_id != destination.scenario_id:
-            raise ValueError("Origin and destination must be in the same scenario.")
-
-
 
 class Origin(Base):
+    """
+    Represents an origin point within a scenario.
+
+    Attributes:
+        id (int): Unique identifier for the origin.
+        scenario_id (int): ID of the associated scenario.
+        relative_id (int): Relative ID of the origin within the scenario.
+        lonlat (Tuple[float, float]): Coordinates of the origin point.
+    """
+
     __tablename__ = "origins"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     scenario_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenarios.id"))
     relative_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    lonlat: Mapped[Tuple[float, float]] = mapped_column(JSON, nullable=False)
 
-    # Add a UniqueConstraint to ensure relative_id is unique within a scenario
     __table_args__ = (
         UniqueConstraint("scenario_id", "relative_id"),
     )
 
-    # Relationships
+    @property
+    def point(self):
+        """
+        Returns the origin point as a Shapely Point.
+
+        Returns:
+            shapely.Point: The origin point.
+        """
+        return shapely.Point(self.lonlat)
+
     scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="origins")
     scenario_outputs: Mapped[list["ScenarioOutput"]] = relationship(
         "ScenarioOutput",
@@ -154,18 +346,37 @@ class Origin(Base):
 
 
 class Destination(Base):
+    """
+    Represents a destination point within a scenario.
+
+    Attributes:
+        id (int): Unique identifier for the destination.
+        scenario_id (int): ID of the associated scenario.
+        relative_id (int): Relative ID of the destination within the scenario.
+        lonlat (Tuple[float, float]): Coordinates of the destination point.
+    """
+
     __tablename__ = "destinations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     scenario_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenarios.id"))
     relative_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    lonlat: Mapped[Tuple[float, float]] = mapped_column(JSON, nullable=False)
 
-    # Add a UniqueConstraint to ensure relative_id is unique within a scenario
+    @property
+    def point(self):
+        """
+        Returns the destination point as a Shapely Point.
+
+        Returns:
+            shapely.Point: The destination point.
+        """
+        return shapely.Point(self.lonlat)
+
     __table_args__ = (
         UniqueConstraint("scenario_id", "relative_id"),
     )
 
-    # Relationships
     scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="destinations")
     scenario_outputs: Mapped[list["ScenarioOutput"]] = relationship(
         "ScenarioOutput",
@@ -174,31 +385,30 @@ class Destination(Base):
     )
 
 
+class SelectedNoFlyZone(Base):
+    """
+    Represents a selected no-fly zone for a scenario output.
 
-class SelectedPolygon(Base):
-    __tablename__ = "selected_polygons"
+    Attributes:
+        id (int): Unique identifier for the selected no-fly zone.
+        no_fly_zone_id (int): ID of the associated no-fly zone.
+        scenario_output_id (int): ID of the associated scenario output.
+    """
+
+    __tablename__ = "selected_no_fly_zones"
 
     id = mapped_column(Integer, primary_key=True)
     
-    polygon_id = mapped_column(Integer, ForeignKey("polygons.id"), nullable=False)
+    no_fly_zone_id = mapped_column(Integer, ForeignKey("no_fly_zones.id"), nullable=False)
     scenario_output_id = mapped_column(Integer, ForeignKey("scenario_outputs.id"), nullable=False)
 
-    # Relationships
-    polygon: Mapped["Polygon"] = relationship("Polygon", back_populates="selections")
-    scenario_output: Mapped["ScenarioOutput"] = relationship("ScenarioOutput", back_populates="selected_polygon_links")
-
-
-
-class ViolatedPolygon(Base):
-    __tablename__ = "violated_polygons"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    scenario_output_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenario_outputs.id"))
-    polygon_id: Mapped[int] = mapped_column(Integer, ForeignKey("polygons.id"))
-
-    # Relationships
-    polygon: Mapped["Polygon"] = relationship("Polygon", back_populates="violations")
-    scenario_output: Mapped["ScenarioOutput"] = relationship("ScenarioOutput", back_populates="violated_polygon_links")
-
-
-    relative_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    no_fly_zone: Mapped["NoFlyZone"] = relationship(
+        "NoFlyZone",
+        back_populates="selections",
+        overlaps="no_fly_zones,scenario_outputs"
+    )
+    scenario_output: Mapped["ScenarioOutput"] = relationship(
+        "ScenarioOutput",
+        back_populates="selected_polygon_links",
+        overlaps="no_fly_zones,scenario_outputs"
+    )
