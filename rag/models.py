@@ -119,10 +119,13 @@ class ScenarioOutput(Base):
     def solution_waypoints(self, value: List[Tuple[float, float]]) -> None:
         self._solution_waypoints = value
         self._is_valid = self.in_origin and self.in_destination and self.in_flyzone and self.has_valid_segments
+    
+    @property
+    def is_valid(self):
+        return self._is_valid
 
     _solution_waypoints: Mapped[List[Tuple[float, float]]] = mapped_column("solution_waypoints", JSON, nullable=False)
-    is_valid: Mapped[bool] = mapped_column("is_valid", Boolean, nullable=False, server_default="false") # cache for querying 
-
+    _is_valid: Mapped[bool] = mapped_column("is_valid", Boolean, nullable=False, server_default="false") # cache for querying 
 
 
     @property
@@ -220,7 +223,7 @@ class ScenarioOutput(Base):
         secondary="selected_no_fly_zones",
         back_populates="scenario_outputs",
         lazy="joined",
-        overlaps="selections"
+        overlaps="selections",
     )
 
     @property
@@ -248,6 +251,7 @@ class ScenarioOutput(Base):
         "SelectedNoFlyZone",
         back_populates="scenario_output",
         lazy="joined",
+        cascade="all, delete-orphan",
         overlaps="no_fly_zones,scenario_outputs"
     )
 
