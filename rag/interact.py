@@ -334,7 +334,7 @@ def query_similar_feedback_without_preference(
     return similar_feedbacks
 
 
-def query_latest_feedback(n):
+def query_latest_feedback(n) -> Sequence[ScenarioOutput]:
     """
     Query the latest n ScenarioOutput records from the database.
     
