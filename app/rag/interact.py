@@ -1,11 +1,13 @@
-from typing import List, Optional, Sequence, Literal, Tuple  # Removed unused import `Union`
-from sqlalchemy import and_, select
+from typing import List, Optional, Sequence, Literal, Tuple, Union  # Added Union back for delete_feedback
+from sqlalchemy import and_, select, func
 from .models import NoFlyZone, Scenario, Origin, Destination, ScenarioOutput
 from .db import Session
 import hashlib
 import xml.etree.ElementTree as ET
 import re
 import os
+import random
+
  
 def load_scenario(file_path: str) -> Scenario:
     """
@@ -193,6 +195,9 @@ def store_output(
         session.refresh(feedback)
     return feedback
 
+
+
+
 def query_similar_feedback(
     origin: Origin,
     destination: Destination,
@@ -281,3 +286,105 @@ def query_similar_feedback(
 
     return list(feedbacks), list(distances)
 
+
+def query_similar_feedback_without_preference(
+    origin: Origin,
+    destination: Destination,
+    no_fly_zones: Sequence[NoFlyZone],
+    filter_by_validity: Optional[bool] = None,
+    n: Optional[int] = None,
+    shuffle: bool = True
+):
+    """
+    Query similar feedbacks from the database based only on the given origin, destination, and no-fly zones.
+    Does not use embedding-based similarity or human preference matching.
+    The returned results are randomly shuffled by default.
+
+    Args:
+        origin (Origin): The origin of the scenario.
+        destination (Destination): The destination of the scenario.
+        no_fly_zones (Sequence[NoFlyZone]): No-fly zones involved in the scenario.
+        filter_by_validity (Optional[bool], optional): Filter results based on validity. Defaults to None.
+        n (Optional[int], optional): Maximum number of results to return. If None, returns all matching results. Defaults to None.
+        shuffle (bool, optional): Whether to shuffle the results randomly. Defaults to True.
+
+    Returns:
+        List[ScenarioOutput]: A list of similar feedbacks matching the parameters (no embedding similarity), optionally shuffled.
+    """
+    with Session() as session:
+        origin = session.merge(origin)
+        destination = session.merge(destination)
+        no_fly_zones = [session.merge(zone) for zone in no_fly_zones]
+        assert origin.scenario == destination.scenario, "The origin and destination must belong to the same scenario."
+
+        validity_filter = True
+        if filter_by_validity is not None:
+            validity_filter = ScenarioOutput.is_valid == filter_by_validity
+
+        stmt = (
+            select(ScenarioOutput)
+            .where(
+                and_(*[ScenarioOutput.no_fly_zones.any(NoFlyZone.id == zone.id) for zone in no_fly_zones]),
+                ScenarioOutput.origin == origin,
+                ScenarioOutput.destination == destination,
+                validity_filter
+            )
+        )
+        if shuffle:
+            stmt = stmt.order_by(func.random())
+        stmt = stmt.limit(n)
+
+        similar_feedbacks = session.execute(stmt).scalars().unique().all()
+    return similar_feedbacks
+
+
+def query_latest_feedback(n) -> Sequence[ScenarioOutput]:
+    """
+    Query the latest n ScenarioOutput records from the database.
+    
+    Args:
+        n (int): Number of latest records to return.
+        shuffle (bool, optional): Whether to shuffle the results randomly. Defaults to False.
+    
+    Returns:
+        List[ScenarioOutput]: A list of the latest ScenarioOutput records.
+    """
+    with Session() as session:
+        stmt = select(ScenarioOutput)
+        
+        stmt = stmt.order_by(ScenarioOutput.id.desc())
+        stmt = stmt.limit(n)
+        
+        latest_feedbacks = session.execute(stmt).scalars().unique().all()
+    return latest_feedbacks
+
+
+def delete_feedback(feedback: Union[int, ScenarioOutput]) -> bool:
+    """
+    Delete a feedback record from the database.
+    
+    Args:
+        feedback (Union[int, ScenarioOutput]): Either the ID of the ScenarioOutput record 
+                                              or the ScenarioOutput object itself to delete.
+        
+    Returns:
+        bool: True if the feedback was successfully deleted, False if not found.
+    """
+    with Session() as session:
+        # Always get the ID and fetch fresh from the current session
+        feedback_id = feedback.id if isinstance(feedback, ScenarioOutput) else feedback
+        
+        # Query for the feedback record in the current session
+        obj = session.execute(
+            select(ScenarioOutput).where(ScenarioOutput.id == feedback_id)
+        ).unique().scalar_one_or_none()
+        
+        if obj is None:
+            return False
+            
+        # Delete the feedback record
+        session.delete(obj)
+        session.commit()
+        
+        return True
+        
