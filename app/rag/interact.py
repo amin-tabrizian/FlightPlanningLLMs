@@ -5,7 +5,7 @@ from .db import Session
 import hashlib
 import xml.etree.ElementTree as ET
 import re
-
+import os
  
 def load_scenario(file_path: str) -> Scenario:
     """
@@ -18,6 +18,8 @@ def load_scenario(file_path: str) -> Scenario:
     Returns:
         Scenario: The loaded or newly created scenario.
     """
+    if not os.path.exists(file_path):
+        file_path = os.path.join(os.path.dirname(__file__), '..', file_path)
     with Session() as session:
         hash = hashlib.sha512(open(file_path, 'rb').read()).hexdigest()
 
@@ -132,17 +134,19 @@ def get_no_fly_zones(scenario: Scenario, names: List[str]):
 
     Args:
         scenario (Scenario): The scenario to which the no-fly zones belong.
-        names (List[str]): List of no-fly zone names to retrieve.
+        name (List[str]): List of no-fly zone names to retrieve.
 
     Returns:
         List[NoFlyZone]: A list of no-fly zone objects matching the given names.
     """
     names = [name.lower() for name in names]
+
     with Session() as session:
         scenario = session.merge(scenario)  # Ensure scenario is attached to the session
         no_fly_zones = session.execute(
             select(NoFlyZone).where(NoFlyZone.scenario_id == scenario.id, NoFlyZone.name.in_(names))
         ).scalars().all()
+    assert len(names) == len(no_fly_zones)
     return no_fly_zones
 
 
@@ -199,7 +203,7 @@ def query_similar_feedback(
     threshold: Optional[float] = None,  
     threshold_op: Literal['>=', '<=', '>', '<', '==', '!='] = '>=',  
     filter_by_validity: Optional[bool] = None, 
-    n: Optional[int] = 2
+    n: Optional[int] = None
 ):
     """
     Query similar feedbacks from the database based on the given parameters.
@@ -276,3 +280,4 @@ def query_similar_feedback(
         feedbacks, distances = zip(*similar_feedbacks) if similar_feedbacks else ([], [])
 
     return list(feedbacks), list(distances)
+

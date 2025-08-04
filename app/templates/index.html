@@ -707,9 +707,9 @@
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label for="humanMsg" class="form-label-modern">Flight Preferences (Optional)</label>
-                                <textarea class="form-control form-control-modern" id="humanMsg" rows="3" 
-                                          placeholder="Enter any specific flight requirements or preferences..."></textarea>
+                                <label for="humanMsg" class="form-label-modern">Flight Preferences</label>
+                                <textarea class="form-control form-control-modern" id="humanMsg" rows="3" required
+                                          placeholder="Enter your specific flight requirements or preferences (required)..."></textarea>
                             </div>
                             <div class="col-md-6">
                                 <label for="promptKey" class="form-label-modern">Advanced Prompt (Optional)</label>
@@ -722,17 +722,12 @@
                             <div class="col-md-6 d-flex align-items-end">
                                 <div class="d-flex gap-3">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="memoryEnabled" checked>
-                                        <label class="form-check-label" for="memoryEnabled">
-                                            Enable Memory
+                                        <input class="form-check-input" type="checkbox" id="ragEnabled" checked>
+                                        <label class="form-check-label" for="ragEnabled">
+                                            Enable RAG
                                         </label>
                                     </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="coachEnabled" checked>
-                                        <label class="form-check-label" for="coachEnabled">
-                                            Enable Coaching
-                                        </label>
-                                    </div>
+
                                 </div>
                             </div>
                             <div class="col-12 mt-4">
@@ -1276,11 +1271,11 @@
             const destination = document.getElementById('destinationSelect').value;
             const humanMsg = document.getElementById('humanMsg').value;
             const promptKey = document.getElementById('promptKey').value;
-            const memory = document.getElementById('memoryEnabled').checked;
-            const coach = document.getElementById('coachEnabled').checked;
+            const memory = document.getElementById('ragEnabled').checked;
+            const coach = true; // Always enable coaching
 
-            if (selectedPolygonSets.length === 0 || !model || !origin || !destination) {
-                showNotification('Please select at least one no-fly zone and fill in all required fields', 'error');
+            if (selectedPolygonSets.length === 0 || !model || !origin || !destination || !humanMsg.trim()) {
+                showNotification('Please select at least one no-fly zone and fill in all required fields including flight preferences', 'error');
                 return;
             }
 
@@ -1436,10 +1431,8 @@
                 downloadTXT.classList.add('fade-in');
             }
 
-            // Show coach section if enabled
-            if (data.coach_enabled) {
-                document.getElementById('coachSection').classList.remove('d-none-modern');
-            }
+            // Always show coach section since coaching is always enabled
+            document.getElementById('coachSection').classList.remove('d-none-modern');
             
             // Show interactive map if map data is available
             if (data.map_data) {
@@ -1747,7 +1740,8 @@
             const reviewData = {
                 review: review,
                 flight_plan_data: currentFlightPlanData,
-                current_waypoints: currentWaypoints  // Add current waypoints state
+                current_waypoints: currentWaypoints,
+                kml_filename: currentKmlFilename
             };
 
             fetch('/submit_review', {

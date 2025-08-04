@@ -16,7 +16,7 @@ from src.RouteBuilding import AStar
 from utils import Waypoint  
 from utils import convert_coordinates_to_airspace_auto, generate_natural_language_review
 from coach import rule_based_evaluation
-
+import os
 def batch_response_generator(batch_path='batch.jsonl', description="Test"):
     client = OpenAI()
     batch_input_file = client.files.create(
@@ -49,7 +49,8 @@ def response_generator(input, model, memory, float_coordinates):
     elif model == "claude-4-opus":
         model = "claude-opus-4-20250514"
     if memory == True:
-        memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review('memory.json')
+        memory_prompt = ""
+        # memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review('memory.json')
     else:
         memory_prompt = ""
         logging.info("Memory is deactivated.")
@@ -100,8 +101,8 @@ def response_generator(input, model, memory, float_coordinates):
         logging.info("A* path planning is done!")
     
     if model !='Astar':
-
-        save_messages_to_file(messages, "messages.txt")
+        output_path = os.path.join(os.path.dirname(__file__), 'messages.txt')
+        save_messages_to_file(messages, output_path)
     
     return response
 

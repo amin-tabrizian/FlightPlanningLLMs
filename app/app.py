@@ -10,7 +10,6 @@ import logging
 import json
 
 # Add the parent directory to the Python path to import the flight planning modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from utils import get_coordinates_from_kml, convert_to_float_dict, prompt_generator, convert_waypoints, compute_total_path_length, convert_waypoints_to_dict, PlannerSolution, mode_detector
 from solver import response_generator
@@ -18,8 +17,8 @@ from osm_img_generator import generate_osm_img
 from interactive_map_generator import generate_interactive_map, calculate_distance_km, validate_flight_path
 # from img_generator import generate_osm_img
 from coach import rule_based_evaluation, llm_evaluation
-from update_memory import update_memory, sample_from_memory
-from utils import greedy_merge
+from update_memory import update_memory, sample_from_memory, query_memory_rag, update_memory_rag
+from utils import greedy_merge, print_feedback_details
 import simplekml
 
 # Configure logging for Flask app
@@ -55,7 +54,9 @@ AVAILABLE_MODELS = [
 def load_prompts():
     """Load prompts from the prompts_no_memory.json file"""
     try:
-        prompts_path = os.path.join(os.path.dirname(__file__), '..', 'prompts_no_memory.json')
+        # Use the absolute path from the project root
+        prompts_path = os.path.join(os.path.join(os.path.dirname(__file__)), 'prompts_no_memory.json')
+        logging.info(f"INFO - Prompts path: {prompts_path}")
         with open(prompts_path, 'r') as f:
             prompts = json.load(f)
         return prompts
@@ -195,15 +196,20 @@ def run_planning():
             return jsonify({'success': False, 'error': 'No coordinates found in KML file'})
         
         # Sample from memory if enabled (same as main.py line 81-82)
+        memory_prompt = ""
         if memory_enabled:
             original_cwd = os.getcwd()
             try:
                 os.chdir('..')
                 # Use the first polygon set for memory sampling
                 if 'poly' in polygon_sets[0]:
-                    sample_from_memory(polygon_sets[0], memory_path='memory_database.json', n_samples=2)
+                    # sample_from_memory(polygon_sets[0], memory_path='memory_database.json', n_samples=2)
+                    feedbacks = query_memory_rag(kml_path, float_coordinates, human_msg, n=2)
+                    memory_prompt = print_feedback_details(feedbacks)
                 else:
-                    sample_from_memory(polygon_sets, memory_path='memory_database.json', n_samples=2)
+                    # sample_from_memory(polygon_sets, memory_path='memory_database.json', n_samples=2)
+                    feedbacks = query_memory_rag(kml_path, float_coordinates, human_msg, n=2)
+                    memory_prompt = print_feedback_details(feedbacks)
             finally:
                 os.chdir(original_cwd)
         
@@ -212,6 +218,7 @@ def run_planning():
         try:
             os.chdir('..')
             prompt = prompt_generator(float_coordinates, place_marks, human_msg, samples=False, system_message=prompt_key)
+            prompt[1] += "Here are most similar previous solutions with evaluation and feedback: \n" + memory_prompt if memory_prompt else ""
         finally:
             os.chdir(original_cwd)
         
@@ -536,17 +543,22 @@ def submit_review():
     try:
         data = request.get_json()
         human_review = data.get('review', '')
-        # Get current waypoints (updated by user interactions)
+        kml_filename =  data.get('kml_filename')  # Get the filename from the request
+        kml_path = os.path.join(app.config['UPLOAD_FOLDER'], kml_filename)
         current_waypoints = data.get('current_waypoints', [])
         float_coordinates = data['flight_plan_data'].get('float_coordinates', {})
         simplified_waypoints = data['flight_plan_data'].get('simplified_waypoints')
         response_waypoints = data['flight_plan_data'].get('response_waypoints', {})
         evaluation_data = data['flight_plan_data'].get('evaluation', {})
         human_msg = data['flight_plan_data'].get('human_msg', '')
-        
+
         if not human_review:
             return jsonify({'success': False, 'error': 'Missing review data'})
+        if not kml_filename:
+            return jsonify({'success': False, 'error': 'Missing kml_filename'})
+
         
+
         # Re-evaluate the current waypoints to get up-to-date evaluation
         if current_waypoints:
             # Use current waypoints and re-evaluate
@@ -567,21 +579,22 @@ def submit_review():
             )
             waypoints_to_save = simplified_waypoints if simplified_waypoints else response_waypoints
             logging.info("Using original waypoints for memory update (fallback)")
-        
+
         # Follow exact main.py workflow (lines 123-130) but use current waypoints
         original_cwd = os.getcwd()
         try:
             os.chdir('..')
             # Convert [lon, lat] to [lat, lon] format for convert_waypoints_to_dict function
             waypoints_lat_lon = [[wp[1], wp[0]] for wp in waypoints_to_save]
-            update_memory(float_coordinates, convert_waypoints_to_dict(waypoints_lat_lon), evaluation, human_msg)
+            # update_memory(float_coordinates, convert_waypoints_to_dict(waypoints_lat_lon), evaluation, human_msg)
+            update_memory_rag(kml_path, float_coordinates, waypoints_to_save, evaluation, human_msg)
         finally:
             os.chdir(original_cwd)
-        
+
         logging.info(f"Memory updated with current waypoints - Human review: {human_review}")
-        
+
         return jsonify({'success': True, 'message': 'Review submitted and memory updated successfully'})
-        
+
     except Exception as e:
         logging.error(f"Error in submit_review: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})

@@ -10,7 +10,7 @@ from functools import cached_property
 
 Base = declarative_base()
 
-TOLERANCE = 1e-3
+TOLERANCE = 1e-2
 
 
 class Scenario(Base):
@@ -114,14 +114,17 @@ class ScenarioOutput(Base):
     @property
     def solution_waypoints(self) -> List[Tuple[float, float]]:
         return self._solution_waypoints
+    @property
+    def is_valid(self) -> bool:
+        return self._is_valid
+    
 
     @solution_waypoints.setter
     def solution_waypoints(self, value: List[Tuple[float, float]]) -> None:
         self._solution_waypoints = value
         self._is_valid = self.in_origin and self.in_destination and self.in_flyzone and self.has_valid_segments
-
     _solution_waypoints: Mapped[List[Tuple[float, float]]] = mapped_column("solution_waypoints", JSON, nullable=False)
-    is_valid: Mapped[bool] = mapped_column("is_valid", Boolean, nullable=False, server_default="false") # cache for querying 
+    _is_valid: Mapped[bool] = mapped_column("is_valid", Boolean, nullable=False, server_default="false") # cache for querying 
 
 
 

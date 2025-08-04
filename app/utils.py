@@ -9,8 +9,7 @@ import datetime
 import json
 from typing import List, Tuple
 from shapely.geometry import LineString, Polygon
-
-
+import os
  
 
 
@@ -188,8 +187,9 @@ def load_system_message(user_key: str) -> str:
         str: The system message if found, otherwise an empty string.
     """
     import json
+    prompts_path = os.path.join(os.path.dirname(__file__), 'prompts_no_memory.json')
     try:
-        with open("prompts_no_memory.json", "r") as file:
+        with open(prompts_path, "r") as file:
             messages = json.load(file)
         return messages.get(user_key, "")
     except Exception as e:
@@ -427,7 +427,25 @@ def generate_natural_language_review(json_file_path, raw=False):
 
     return "\n\n".join(reviews)
 
-    
+
+def print_feedback_details(feedbacks):
+    output=""
+    for feedback in feedbacks:
+        feedback_str = []
+        feedback_str.append("Experience Details:")
+        feedback_str.append(f"- Human preference: {feedback.human_preference}")
+        feedback_str.append(f"- Solution Waypoints: {feedback.solution_waypoints}")
+        feedback_str.append(f"- Valid: {feedback.is_valid}")
+        feedback_str.append("Violating Segments:")
+        for i, segment in enumerate(feedback.violating_segments, start=1):
+            feedback_str.append(f"  {i}. {segment}")
+        feedback_str.append(f"- Violated Polygons: {feedback.violated_no_fly_zones}")
+        feedback_str.append(f"- In Flyzone: {feedback.in_flyzone}")
+        feedback_str.append(f"- In Origin: {feedback.in_origin}")
+        feedback_str.append(f"- In Destination: {feedback.in_destination}")
+        feedback_str.append(f"- Feedback: {feedback.feedback}")
+        output += "\n".join(feedback_str) + "\n\n"
+    return output
     
 def add_batch_entry(system_messages: str, user_message: str, custom_id: str = "request-1") -> None:
     """
