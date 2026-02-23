@@ -69,7 +69,8 @@ def response_generator(input, model, memory, float_coordinates):
             seed=12345,
             # top_p=0.00000001,
         )
-        logging.info(f"System fingerprint is {completion.system_fingerprint}")
+        system_fingerprint = getattr(completion, 'system_fingerprint', None)
+        logging.info(f"System fingerprint is {system_fingerprint if system_fingerprint else 'not available'}")
         response = completion.choices[0].message.parsed
     elif model == "claude-3-7-sonnet-20250219" or model == "claude-3-5-haiku-20241022" or model == "claude-sonnet-4-0" or model ==  "claude-opus-4-20250514":
         client = instructor.from_anthropic(
