@@ -10,15 +10,15 @@ import logging
 import json
 
 # Add the parent directory to the Python path to import the flight planning modules
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from utils import get_coordinates_from_kml, convert_to_float_dict, prompt_generator, convert_waypoints, compute_total_path_length, convert_waypoints_to_dict, PlannerSolution, mode_detector
 from solver import response_generator
 from osm_img_generator import generate_osm_img
-from interactive_map_generator import generate_interactive_map, calculate_distance_km, validate_flight_path
 # from img_generator import generate_osm_img
 from coach import rule_based_evaluation, llm_evaluation
-from update_memory import update_memory, sample_from_memory, query_memory_rag, update_memory_rag
-from utils import greedy_merge, print_feedback_details
+from update_memory import update_memory, sample_from_memory
+from utils import greedy_merge
 import simplekml
 
 # Configure logging for Flask app
@@ -54,9 +54,7 @@ AVAILABLE_MODELS = [
 def load_prompts():
     """Load prompts from the prompts_no_memory.json file"""
     try:
-        # Use the absolute path from the project root
-        prompts_path = os.path.join(os.path.join(os.path.dirname(__file__)), 'prompts_no_memory.json')
-        logging.info(f"INFO - Prompts path: {prompts_path}")
+        prompts_path = os.path.join(os.path.dirname(__file__), '..', 'prompts_no_memory.json')
         with open(prompts_path, 'r') as f:
             prompts = json.load(f)
         return prompts
@@ -196,20 +194,15 @@ def run_planning():
             return jsonify({'success': False, 'error': 'No coordinates found in KML file'})
         
         # Sample from memory if enabled (same as main.py line 81-82)
-        memory_prompt = ""
         if memory_enabled:
             original_cwd = os.getcwd()
             try:
                 os.chdir('..')
                 # Use the first polygon set for memory sampling
                 if 'poly' in polygon_sets[0]:
-                    # sample_from_memory(polygon_sets[0], memory_path='memory_database.json', n_samples=2)
-                    feedbacks = query_memory_rag(kml_path, float_coordinates, human_msg, n=2)
-                    memory_prompt = print_feedback_details(feedbacks)
+                    sample_from_memory(polygon_sets[0], memory_path='memory_database.json', n_samples=2)
                 else:
-                    # sample_from_memory(polygon_sets, memory_path='memory_database.json', n_samples=2)
-                    feedbacks = query_memory_rag(kml_path, float_coordinates, human_msg, n=2)
-                    memory_prompt = print_feedback_details(feedbacks)
+                    sample_from_memory(polygon_sets, memory_path='memory_database.json', n_samples=2)
             finally:
                 os.chdir(original_cwd)
         
@@ -218,7 +211,6 @@ def run_planning():
         try:
             os.chdir('..')
             prompt = prompt_generator(float_coordinates, place_marks, human_msg, samples=False, system_message=prompt_key)
-            prompt[1] += "Here are most similar previous solutions with evaluation and feedback: \n" + memory_prompt if memory_prompt else ""
         finally:
             os.chdir(original_cwd)
         
@@ -248,9 +240,8 @@ def run_planning():
         image_generated = False
         
         if evaluation.valid:
-            pass
-            # simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
-            # image_generated = generate_osm_img(float_coordinates, simplified_waypoints, image_path, evaluation)
+            simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
+            image_generated = generate_osm_img(float_coordinates, simplified_waypoints, image_path, evaluation)
         else:
             image_generated = generate_osm_img(float_coordinates, waypoints_list, image_path, evaluation)
         
@@ -264,7 +255,7 @@ def run_planning():
         # Use simplified waypoints if available, otherwise use raw waypoints
         final_waypoints = simplified_waypoints if simplified_waypoints else waypoints_list
         final_waypoint_count = len(simplified_waypoints) if simplified_waypoints else len(response.waypoints)
-        logging.info(f"DEBUG - Final waypoints: {final_waypoints}")
+        
         # Recalculate total path length with final waypoints
         final_total_length = compute_total_path_length(final_waypoints)
         
@@ -328,9 +319,6 @@ def run_planning():
             evaluation.human_review = "False"
         
         solution = PlannerSolution()
-        import csv
-
-        # Prepare core metrics dictionary
         solution.core_metrics = {
             "distance_km": final_total_length,       
             "num_waypoints": final_waypoint_count,      
@@ -346,56 +334,9 @@ def run_planning():
             "solution_waypoints": final_waypoints, 
             "polygon_number": polygon_sets,   
             "human_preference": human_msg,
-            "orig_dest": [place_marks[-2], place_marks[-1]],        }
-
-        # Write core metrics to CSV file
-        csv_file = "solution_core_metrics.csv"
-        # Prepare a flat dict for CSV (convert lists/dicts to strings)
-        csv_row = {
-            "distance_km": final_total_length,
-            "num_waypoints": final_waypoint_count,
-            "response_time_s": end_time - start_time,
-            "energy": 0.0,
-            "is_valid": evaluation.valid,
-            "orig_dest_ok": evaluation.orig_dest_ok,
-            "fly_zone": evaluation.out_pts,
-            "avoid_polygons": str(evaluation.polys),
-            "model": model_name,
-            "memory": memory_enabled,
-            "solution_waypoints": str(final_waypoints),
-            "polygon_number": str(polygon_sets),
-            "human_preference": human_msg,
-            "orig_dest_names": str([place_marks[-2], place_marks[-1]]),
+            "orig_dest": [place_marks[-2], place_marks[-1]],
+            "aligned_with_human_preference": evaluation.human_review
         }
-        csv_headers = [
-            "distance_km",
-            "num_waypoints",
-            "response_time_s",
-            "energy",
-            "is_valid",
-            "orig_dest_ok",
-            "fly_zone",
-            "avoid_polygons",
-            "model",
-            "memory",
-            "solution_waypoints",
-            "polygon_number",
-            "human_preference",
-            "orig_dest_names",
-        ]
-        # Check if file exists
-        file_exists = os.path.isfile(csv_file)
-        try:
-            with open(csv_file, 'a', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=csv_headers)
-                if not file_exists:
-                    writer.writeheader()
-                writer.writerow(csv_row)
-        except Exception as e:
-            logging.error(f"Error writing to CSV: {e}")
-        
-        # Generate interactive map data
-        map_data = generate_interactive_map(float_coordinates, final_waypoints, image_path, evaluation, timestamp)
         
         # Prepare results for web response
         result = {
@@ -417,8 +358,7 @@ def run_planning():
             'float_coordinates': float_coordinates,
             'simplified_waypoints': simplified_waypoints if simplified_waypoints else None,
             'response_waypoints': final_waypoints,
-            'human_msg': human_msg,
-            'map_data': map_data  # Add interactive map data
+            'human_msg': human_msg
         }
         
         return jsonify(result)
@@ -427,174 +367,47 @@ def run_planning():
         logging.error(f"Error in run_planning: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/save_updated_waypoints', methods=['POST'])
-def save_updated_waypoints():
-    """
-    Save updated waypoints from interactive map and regenerate flight plan files
-    """
-    try:
-        data = request.get_json()
-        
-        # Get the updated waypoints
-        updated_waypoints = data.get('waypoints', [])
-        timestamp = data.get('timestamp')
-        float_coordinates = data.get('float_coordinates', {})
-        
-        if not updated_waypoints or not timestamp:
-            return jsonify({'success': False, 'error': 'Missing waypoints or timestamp'})
-        
-        # Convert waypoints format from frontend {lat, lng} to backend format [lon, lat]
-        waypoints_list = [[wp['lng'], wp['lat']] for wp in updated_waypoints]
-        
-        # Debug print
-        print(f"DEBUG - Updated waypoints received: {updated_waypoints[:2] if updated_waypoints else 'None'}")
-        print(f"DEBUG - Converted waypoints: {waypoints_list[:2] if waypoints_list else 'None'}")
-        
-        # Recalculate total distance
-        total_length = calculate_distance_km(waypoints_list)
-        
-        # Re-evaluate the flight path
-        evaluation = rule_based_evaluation(waypoints_list, float_coordinates)
-        
-        # Update file paths
-        solution_path = f"static/solution_{timestamp}.kml"
-        text_path = f"static/flight_plan_{timestamp}.txt"
-        image_path = f"static/flight_plan_{timestamp}.png"
-        
-        # Generate updated KML file
-        import simplekml
-        polygon_kml = simplekml.Kml()
-        
-        # Add points/polygons based on placemark names
-        if float_coordinates:
-            for name, coords in float_coordinates.items():
-                if 'Origin' in name:
-                    polygon_kml.newpoint(name=name, coords=coords)
-                elif 'Destination' in name:
-                    polygon_kml.newpoint(name=name, coords=coords)
-                elif name == 'FlyZone':
-                    polygon = polygon_kml.newpolygon(name=name, outerboundaryis=coords)
-                    polygon.style.polystyle.color = simplekml.Color.changealphaint(51, simplekml.Color.red)
-                else:
-                    polygon_kml.newpolygon(name=name, outerboundaryis=coords)
-        
-        # Add the updated flight plan as a linestring
-        line = polygon_kml.newlinestring(name="PolySolution", coords=waypoints_list)
-        line.style.linestyle.color = simplekml.Color.green
-        line.style.linestyle.width = 5
-        
-        # Save updated KML file
-        polygon_kml.save(solution_path)
-        
-        # Generate updated Mission Planner format text file
-        with open(text_path, 'w') as f:
-            # Header line
-            f.write("QGC WPL 110\n")
-            
-            # Find origin coordinates
-            origin_coords = waypoints_list[0]  # First waypoint is origin [lon, lat]
-            
-            # First waypoint: Takeoff to 90m at origin (convert [lon, lat] to lat, lon for Mission Planner)
-            f.write(f"0\t1\t0\t22\t0\t0\t0\t0\t{origin_coords[1]}\t{origin_coords[0]}\t90\t1\n")
-            
-            # Navigation waypoints (skip first waypoint which is origin)
-            waypoint_index = 1
-            for wp in waypoints_list[1:]:
-                # Convert [lon, lat] to lat, lon for Mission Planner format
-                f.write(f"{waypoint_index}\t0\t3\t16\t0\t0\t0\t0\t{wp[1]}\t{wp[0]}\t90\t1\n")
-                waypoint_index += 1
-            
-            # Return to launch
-            f.write(f"{waypoint_index}\t0\t3\t20\t0\t0\t0\t0\t0\t0\t0\t1\n")
-        
-        # Generate updated static image (optional, for compatibility)
-        try:
-            generate_osm_img(float_coordinates, waypoints_list, image_path, evaluation)
-        except Exception as img_error:
-            logging.warning(f"Could not generate static image: {img_error}")
-        
-        # Prepare response
-        result = {
-            'success': True,
-            'total_length': round(total_length, 2),
-            'waypoint_count': len(waypoints_list),
-            'evaluation': {
-                'valid': evaluation.valid,
-                'intersected_polygons': evaluation.polys,
-                'origin_dest_ok': evaluation.orig_dest_ok,
-                'out_of_flyzone': evaluation.out_pts
-            },
-            'solution_path': solution_path,
-            'text_path': text_path,
-            'image_path': image_path,
-            'updated_waypoints': waypoints_list
-        }
-        
-        logging.info(f"Updated flight plan saved with {len(waypoints_list)} waypoints, distance: {total_length:.2f}km")
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logging.error(f"Error in save_updated_waypoints: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
 @app.route('/submit_review', methods=['POST'])
 def submit_review():
     try:
         data = request.get_json()
         human_review = data.get('review', '')
-        kml_filename =  data.get('kml_filename')  # Get the filename from the request
-        kml_path = os.path.join(app.config['UPLOAD_FOLDER'], kml_filename)
-        current_waypoints = data.get('current_waypoints', [])
+        # The frontend will need to pass the necessary data to replicate main.py lines 123-130
         float_coordinates = data['flight_plan_data'].get('float_coordinates', {})
         simplified_waypoints = data['flight_plan_data'].get('simplified_waypoints')
         response_waypoints = data['flight_plan_data'].get('response_waypoints', {})
         evaluation_data = data['flight_plan_data'].get('evaluation', {})
         human_msg = data['flight_plan_data'].get('human_msg', '')
-
+        
         if not human_review:
             return jsonify({'success': False, 'error': 'Missing review data'})
-        if not kml_filename:
-            return jsonify({'success': False, 'error': 'Missing kml_filename'})
-
         
-
-        # Re-evaluate the current waypoints to get up-to-date evaluation
-        if current_waypoints:
-            # Use current waypoints and re-evaluate
-            evaluation = rule_based_evaluation(current_waypoints, float_coordinates)
-            evaluation.human_review = human_review
-            waypoints_to_save = current_waypoints
-            logging.info(f"Using current waypoints for memory update - {len(current_waypoints)} waypoints")
-        else:
-            # Fallback to original evaluation if no current waypoints
-            from coach import Evaluation
-            evaluation = Evaluation(
-                valid=evaluation_data.get('valid', False),
-                polys=evaluation_data.get('intersected_polygons', []),
-                segs=[],
-                orig_dest_ok=evaluation_data.get('origin_dest_ok', [False, False]),
-                out_pts=evaluation_data.get('out_of_flyzone', []),
-                human_review=human_review
-            )
-            waypoints_to_save = simplified_waypoints if simplified_waypoints else response_waypoints
-            logging.info("Using original waypoints for memory update (fallback)")
-
-        # Follow exact main.py workflow (lines 123-130) but use current waypoints
+        # Create evaluation object from data
+        from coach import Evaluation
+        evaluation = Evaluation(
+            valid=evaluation_data.get('valid', False),
+            polys=evaluation_data.get('intersected_polygons', []),
+            segs=[],
+            orig_dest_ok=evaluation_data.get('origin_dest_ok', [False, False]),
+            out_pts=evaluation_data.get('out_of_flyzone', []),
+            human_review=human_review
+        )
+        
+        # Follow exact main.py workflow (lines 123-130)
         original_cwd = os.getcwd()
         try:
             os.chdir('..')
-            # Convert [lon, lat] to [lat, lon] format for convert_waypoints_to_dict function
-            waypoints_lat_lon = [[wp[1], wp[0]] for wp in waypoints_to_save]
-            # update_memory(float_coordinates, convert_waypoints_to_dict(waypoints_lat_lon), evaluation, human_msg)
-            update_memory_rag(kml_path, float_coordinates, waypoints_to_save, evaluation, human_msg)
+            if simplified_waypoints:
+                update_memory(float_coordinates, convert_waypoints_to_dict(simplified_waypoints), evaluation, human_msg)
+            else:
+                update_memory(float_coordinates, convert_waypoints_to_dict(response_waypoints), evaluation, human_msg)
         finally:
             os.chdir(original_cwd)
-
-        logging.info(f"Memory updated with current waypoints - Human review: {human_review}")
-
+        
+        logging.info(f"Memory updated with evaluation results - Human review: {human_review}")
+        
         return jsonify({'success': True, 'message': 'Review submitted and memory updated successfully'})
-
+        
     except Exception as e:
         logging.error(f"Error in submit_review: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
