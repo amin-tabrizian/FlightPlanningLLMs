@@ -1,5 +1,6 @@
 __pycache__/
 .vscode/
+.claude/
 .venv/
 *.kml
 *.txt
@@ -8,7 +9,7 @@ test*
 !dataset.kml
 .DS_Store
 *.csv
-coach_example/
+coach_examples/
 *batch*
 *memory*
 app/venv/
@@ -16,3 +17,5 @@ app/.env
 .env
 setup_env.sh
 rlrd/
+static/
+flight_plans/

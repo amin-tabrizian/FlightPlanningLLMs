@@ -108,7 +108,7 @@ evaluation = rule_based_evaluation(waypoints_list, float_coordinates)
 simplified_waypoints = None
 if evaluation.valid:
     simplified_waypoints = greedy_merge(waypoints_list, float_coordinates)
-    generate_img(float_coordinates, simplified_waypoints, 'flight_plans/simplified_waypoints.png', evaluation)
+    generate_img(float_coordinates, simplified_waypoints, 'static/simplified_waypoints.png', evaluation)
 
 
 generate_img(float_coordinates, waypoints_list, args.image_path, evaluation)
