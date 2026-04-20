@@ -2,11 +2,19 @@ import logging
 from utils import *
 import simplekml
 from solver import response_generator
-from update_memory import update_memory, sample_from_memory
 from coach import llm_evaluation, interesection_list, rule_based_evaluation
 from img_generator import generate_img
+from rag.interact import (
+    load_scenario,
+    get_origin,
+    get_destination,
+    get_polygons,
+    store_output,
+    query_similar_feedback,
+)
 import csv
 import os
+import re
 import argparse
 import time
 
@@ -25,14 +33,16 @@ parser = argparse.ArgumentParser(description="Process KML file and extract place
 parser.add_argument("model_name", type=str, help="Path to the input KML file")
 parser.add_argument("kml_path", type=str, help="Path to the input KML file")
 parser.add_argument("place_marks", nargs='+', help="Name of the place marks to extract")
-parser.add_argument("output_path", type=str, help="Path to save the output file")
+parser.add_argument("--output_path", type=str, default="output.kml", help="Path to save the output KML file")
 parser.add_argument("--image_path", type=str, help="Path to save the image")
-parser.add_argument("--log", action="store_true", help="Enable logging output")
-parser.add_argument("--memory", action="store_true", help="Enable memory")
-parser.add_argument("--report_file", type=str, help="Report file path")
-parser.add_argument("--human_preference", type=str, help="Human preference for flight planning" )
-parser.add_argument("--system_message", type=str, help="System message for flight planning" )
-parser.add_argument("--coach", action="store_true", help="use coach agent to evaluate the planning")
+parser.add_argument("--log", action="store_true", help="Enable logging output", default=True)
+parser.add_argument("--report_file", type=str, default="runs.csv", help="Report file path")
+parser.add_argument("--human_preference", type=str, help="Human preference for flight planning", default="..." )
+parser.add_argument("--system_message", type=str, help="System message for flight planning", default="sys_msg_zero_shot_ours")
+parser.add_argument("--coach", action="store_true", help="use coach agent to evaluate the planning", default=False)
+parser.add_argument("--human_review", action="store_true", default=False, help="prompt for a human review of the solution")
+parser.add_argument("--rag", type=int, default=0, metavar="N", help="load N no-coach RAG examples (problem-only records)")
+parser.add_argument("--rag_coach", type=int, default=0, metavar="N", help="load N coach RAG examples (problem + review records)")
 
 args = parser.parse_args()
 
@@ -81,11 +91,86 @@ if float_coordinates:
             logging.info(f"Added polygon for {name}.")
 else:
     logging.warning("No float coordinates found from KML file.")
-# Add the flight plan as a linestring to the KML
-if args.memory:
-    sample_from_memory(args.place_marks[0],memory_path='memory_database.json', n_samples=2)
+
+# Resolve scenario entities for RAG (load/retrieve/store happen against the same scenario).
+scenario = load_scenario(kml_path)
+origin_name = next((k for k in float_coordinates if 'Origin' in k), None)
+destination_name = next((k for k in float_coordinates if 'Destination' in k), None)
+polygon_names = [
+    k.lower() for k in float_coordinates
+    if 'Origin' not in k and 'Destination' not in k and 'FlyZone' not in k
+]
+origin_id = int(re.search(r'\d+', origin_name).group()) if origin_name else None
+destination_id = int(re.search(r'\d+', destination_name).group()) if destination_name else None
+scenario_origin = get_origin(scenario, origin_id) if origin_id is not None else None
+scenario_destination = get_destination(scenario, destination_id) if destination_id is not None else None
+scenario_polygons = get_polygons(scenario, polygon_names) if polygon_names else []
+
+
+def _format_rag_examples(records, include_review, header):
+    if not records:
+        return ""
+    lines = ["\n" + header]
+    for i, rec in enumerate(records, 1):
+        lines.append(f"Example {i}:")
+        lines.append(f"  Human preference: {rec.human_preference or '(none)'}")
+        lines.append(f"  Solution waypoints: {rec.solution_waypoints}")
+        if include_review:
+            lines.append(f"  Valid: {rec.is_valid}")
+            lines.append(f"  Waypoints outside flyzone: {rec.waypoints_outside_flyzone}")
+            lines.append(f"  Violated polygons: {rec.violated_polygon_names}")
+            if rec.feedback:
+                lines.append(f"  Review: {rec.feedback}")
+    return "\n".join(lines) + "\n"
+
+
+rag_context = ""
+if (args.rag or args.rag_coach) and scenario_origin and scenario_destination:
+    if args.rag_coach:
+        coach_records, _ = query_similar_feedback(
+            origin=scenario_origin,
+            destination=scenario_destination,
+            polygons=scenario_polygons,
+            human_preference=human_msg,
+            filter_by_has_review=True,
+            filter_by_validity=True,
+            n=args.rag_coach,
+        )
+        header = "Previous solutions with coach reviews for similar problems:"
+        if not coach_records:
+            coach_records, _ = query_similar_feedback(
+                origin=scenario_origin,
+                destination=scenario_destination,
+                polygons=scenario_polygons,
+                human_preference=human_msg,
+                filter_by_has_review=True,
+                n=args.rag_coach,
+            )
+            header = "Previous solutions with coach reviews (invalid — no valid examples found):"
+            logging.info("No valid coach records; falling back to invalid coach records.")
+        rag_context += _format_rag_examples(
+            coach_records, include_review=True,
+            header=header,
+        )
+    if args.rag:
+        plain_records, _ = query_similar_feedback(
+            origin=scenario_origin,
+            destination=scenario_destination,
+            polygons=scenario_polygons,
+            human_preference=human_msg,
+            filter_by_has_review=False,
+            n=args.rag,
+        )
+        rag_context += _format_rag_examples(
+            plain_records, include_review=False,
+            header="Previous solutions (no review) for similar problems:"
+        )
+    if rag_context:
+        prompt[1] += rag_context
+        logging.info(f"Appended RAG context ({len(rag_context)} chars) to prompt.")
+
 start_time = time.time()
-response = response_generator(prompt, args.model_name, args.memory, float_coordinates)
+response = response_generator(prompt, args.model_name, False, float_coordinates)
 waypoints_list = convert_waypoints(response.waypoints)
 end_time = time.time()
 line = polygon_kml.newlinestring(name="PolySolution", 
@@ -121,39 +206,55 @@ logging.info(f"Starts with origin and ends in destination: {evaluation.orig_dest
 
 
 
-if args.coach:
-    logging.info(f"Any comments about the solution?")
+if args.coach and args.human_review:
+    logging.info("Any comments about the solution?")
     evaluation.human_review = input()
-    if simplified_waypoints:
-        update_memory(float_coordinates, convert_waypoints_to_dict(simplified_waypoints), evaluation, human_msg)
-    else:
-        update_memory(float_coordinates, response.waypoints, evaluation, human_msg)
-logging.info("Memory updated with evaluation results.")
+
+stored_waypoints = simplified_waypoints if simplified_waypoints else waypoints_list
+violated_polygon_objs = [p for p in scenario_polygons if p.name in evaluation.polys] if args.coach else []
+
+if scenario_origin and scenario_destination:
+    store_output(
+        origin=scenario_origin,
+        destination=scenario_destination,
+        polygons=scenario_polygons,
+        human_preference=human_msg,
+        solution_waypoints=stored_waypoints,
+        is_valid=evaluation.valid,
+        in_origin=evaluation.orig_dest_ok[0],
+        in_destination=evaluation.orig_dest_ok[1],
+        feedback=evaluation.human_review or None,
+        has_review=args.coach,
+        waypoints_outside_flyzone=evaluation.out_pts,
+        violated_polygons=violated_polygon_objs,
+    )
+    logging.info(f"Stored run to RAG (has_review={args.coach}).")
 
 
 logging.info("Process completed.")
-if evaluation.human_review == "":
-    evaluation.human_review = "True"
+if args.coach and args.human_review:
+    aligned_with_human_preference = "True" if evaluation.human_review == "" else "False"
 else:
-    evaluation.human_review = "False"
+    aligned_with_human_preference = None
 solution = PlannerSolution()
 solution.core_metrics["distance_km"] = total_length
-solution.core_metrics = {"distance_km": total_length,       
-                            "num_waypoints": len(response.waypoints),      
-                            "response_time_s": end_time - start_time,   
-                            "energy": 0.0,           
-                            "is_valid": evaluation.valid,        
-                            "orig_dest": evaluation.orig_dest_ok,       
-                            "fly_zone": evaluation.out_pts,        
-                            "avoid_polygons": evaluation.polys,  
+solution.core_metrics = {"distance_km": total_length,
+                            "num_waypoints": len(response.waypoints),
+                            "response_time_s": end_time - start_time,
+                            "energy": 0.0,
+                            "is_valid": evaluation.valid,
+                            "orig_dest": evaluation.orig_dest_ok,
+                            "fly_zone": evaluation.out_pts,
+                            "avoid_polygons": evaluation.polys,
                             "model": args.model_name,
-                            "mode": mode_detector(args.place_marks),              
-                            "memory": args.memory,
-                            "solution_waypoints": response.waypoints, 
-                            "polygon_number": args.place_marks[0],   
+                            "mode": mode_detector(args.place_marks),
+                            "rag": args.rag,
+                            "rag_coach": args.rag_coach,
+                            "solution_waypoints": response.waypoints,
+                            "polygon_number": args.place_marks[0],
                            "human_preference": args.human_preference,
                            "orig_dest": [args.place_marks[1], args.place_marks[2]],
-                           "aligned_with_human_preference": evaluation.human_review}   
+                           "aligned_with_human_preference": aligned_with_human_preference}
         
 
 

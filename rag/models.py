@@ -1,4 +1,5 @@
 import requests # type: ignore
+from typing import Optional
 from sqlalchemy.orm import declarative_base, mapped_column, relationship, Mapped
 from sqlalchemy import Boolean, Integer, Text, ForeignKey, UniqueConstraint
 from pgvector.sqlalchemy import Vector # type: ignore
@@ -25,8 +26,6 @@ class Polygon(Base):
 
     # Add a relationship to Scenario
     scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="polygons")
-    selections: Mapped[list["SelectedPolygon"]] = relationship("SelectedPolygon", back_populates="polygon")
-    violations: Mapped[list["ViolatedPolygon"]] = relationship("ViolatedPolygon", back_populates="polygon")
 
     scenario_outputs: Mapped[list["ScenarioOutput"]] = relationship(
         "ScenarioOutput",
@@ -45,20 +44,20 @@ class ScenarioOutput(Base):
 
     _embedding: Mapped[list[float]] = mapped_column("embedding", Vector(1024))
     _human_preference: Mapped[str] = mapped_column("human_preference", Text)
-    feedback: Mapped[str] = mapped_column(Text)
+    feedback: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+    has_review: Mapped[bool] = mapped_column(Boolean, default=False)
 
     solution_waypoints: Mapped[list[list[float]]] = mapped_column(Text, default=lambda: [])
-    waypoints_outside_flyzone: Mapped[list[list[float]]] = mapped_column(Text, default=lambda: [])
+    waypoints_outside_flyzone: Mapped[Optional[list[list[float]]]] = mapped_column(Text, nullable=True, default=None)
 
-    is_valid: Mapped[bool] = mapped_column(Boolean)
-    in_origin: Mapped[bool] = mapped_column(Boolean)
-    in_destination: Mapped[bool] = mapped_column(Boolean)
+    is_valid: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=None)
+    in_origin: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=None)
+    in_destination: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=None)
 
     
     violated_polygons: Mapped[list["Polygon"]] = relationship(
         "Polygon",
         secondary="violated_polygons",
-        back_populates="scenario_outputs",
         lazy="joined"
     )
     polygons: Mapped[list["Polygon"]] = relationship(
@@ -87,9 +86,6 @@ class ScenarioOutput(Base):
         lazy="joined"
     )
    
-    selected_polygon_links: Mapped[list["SelectedPolygon"]] = relationship("SelectedPolygon", back_populates="scenario_output", lazy="joined")
-    violated_polygon_links: Mapped[list["ViolatedPolygon"]] = relationship("ViolatedPolygon", back_populates="scenario_output", lazy="joined")
-
     @property
     def human_preference(self) -> str:
         return self._human_preference
@@ -183,10 +179,6 @@ class SelectedPolygon(Base):
     polygon_id = mapped_column(Integer, ForeignKey("polygons.id"), nullable=False)
     scenario_output_id = mapped_column(Integer, ForeignKey("scenario_outputs.id"), nullable=False)
 
-    # Relationships
-    polygon: Mapped["Polygon"] = relationship("Polygon", back_populates="selections")
-    scenario_output: Mapped["ScenarioOutput"] = relationship("ScenarioOutput", back_populates="selected_polygon_links")
-
 
 
 class ViolatedPolygon(Base):
@@ -195,10 +187,3 @@ class ViolatedPolygon(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     scenario_output_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenario_outputs.id"))
     polygon_id: Mapped[int] = mapped_column(Integer, ForeignKey("polygons.id"))
-
-    # Relationships
-    polygon: Mapped["Polygon"] = relationship("Polygon", back_populates="violations")
-    scenario_output: Mapped["ScenarioOutput"] = relationship("ScenarioOutput", back_populates="violated_polygon_links")
-
-
-    relative_id: Mapped[int] = mapped_column(Integer, nullable=False)

@@ -1,3 +1,4 @@
+import os
 from openai import OpenAI
 import anthropic
 import logging
@@ -9,6 +10,8 @@ from typing import Dict, List
 from pathlib import Path
 from time import perf_counter
 import numpy as np
+
+_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 from shapely.geometry import Polygon, Point
 from src.Airspace import Airspace
 from src.functions import displayRouteAirspace
@@ -49,7 +52,7 @@ def response_generator(input, model, memory, float_coordinates):
     elif model == "claude-4-opus":
         model = "claude-opus-4-20250514"
     if memory == True:
-        memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review('memory.json')
+        memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review(os.path.join(_PROJECT_ROOT, 'memory.json'))
     else:
         memory_prompt = ""
         logging.info("Memory is deactivated.")
@@ -102,7 +105,7 @@ def response_generator(input, model, memory, float_coordinates):
     
     if model !='Astar':
 
-        save_messages_to_file(messages, "messages.txt")
+        save_messages_to_file(messages, os.path.join(_PROJECT_ROOT, "messages.txt"))
     
     return response
 

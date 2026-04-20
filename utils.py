@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import simplekml
 import math
+import os
 from pydantic import BaseModel
 from quadrilateral_fitter import QuadrilateralFitter
 from shapely.geometry import Polygon, Point
@@ -9,6 +10,8 @@ import datetime
 import json
 from typing import List, Tuple
 from shapely.geometry import LineString, Polygon
+
+_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
  
@@ -109,7 +112,7 @@ def prompt_generator(float_coordinates, placemarks, human_msg, samples = False, 
     Returns:
         str: The generated prompt for the flight planner.
     """
-    human_msg = "Human preference: \n" + human_msg + human_msg + human_msg + " \n" if human_msg else ""
+    human_msg = "Human preference: \n" + human_msg + " \n" if human_msg else ""
     coordinates_dict = float_coordinates
     user_msg = 'Now you have to generate a flight plan avoiding the hazardous polygons for the following problem: \n'
     # system_msg = (
@@ -189,7 +192,7 @@ def load_system_message(user_key: str) -> str:
     """
     import json
     try:
-        with open("prompts_no_memory.json", "r") as file:
+        with open(os.path.join(_PROJECT_ROOT, "prompts_no_memory.json"), "r") as file:
             messages = json.load(file)
         return messages.get(user_key, "")
     except Exception as e:
@@ -377,6 +380,7 @@ def convert_coordinates_to_airspace_auto(
     return airspace
 
 def mode_detector(place_marks):
+    print(place_marks)
     poly_name = place_marks[0]
     poly_number = int(poly_name[4])
     print(poly_number)

@@ -3,6 +3,8 @@ import os
 import logging
 from utils import Evaluation, convert_waypoints
 
+_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 def update_memory(coords, waypoints, evaluation: Evaluation, human_msg):
     """
     Updates the JSON file 'memory_database.json' with a new evaluation entry or updates an existing one.
@@ -24,7 +26,7 @@ def update_memory(coords, waypoints, evaluation: Evaluation, human_msg):
     The JSON file is structured as a dictionary keyed by evaluation numbers (as strings).
     If the file doesn't exist or is empty, a new file is created.
     """
-    file_path = "memory_database.json"
+    file_path = os.path.join(_PROJECT_ROOT, "memory_database.json")
     
     # Load existing data if available, otherwise start with an empty dictionary.
     if os.path.exists(file_path):
@@ -89,7 +91,9 @@ def update_memory(coords, waypoints, evaluation: Evaluation, human_msg):
     
 
 
-def sample_from_memory(poly_name, memory_path='memory_database.json', n_samples=3):
+def sample_from_memory(poly_name, memory_path=None, n_samples=3):
+    if memory_path is None:
+        memory_path = os.path.join(_PROJECT_ROOT, 'memory_database.json')
     try:
         with open(memory_path, "r", encoding="utf-8") as f:
             memory_data = json.load(f)
@@ -115,7 +119,7 @@ def sample_from_memory(poly_name, memory_path='memory_database.json', n_samples=
             break
         
     filtered_memory_data = {key: memory_data[key] for key in key_list}
-    with open("memory.json", "w") as f:
+    with open(os.path.join(_PROJECT_ROOT, "memory.json"), "w") as f:
         json.dump(filtered_memory_data, f, indent=2)
 
 

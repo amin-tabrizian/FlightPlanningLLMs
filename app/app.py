@@ -27,14 +27,17 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(APP_DIR)
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['UPLOAD_FOLDER'] = os.path.join(APP_DIR, 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs('static', exist_ok=True)
+os.makedirs(os.path.join(APP_DIR, 'static'), exist_ok=True)
 
 # Available models from solver.py
 AVAILABLE_MODELS = [
@@ -176,9 +179,9 @@ def run_planning():
         
         # Create unique filenames for this run
         timestamp = str(int(time.time()))
-        solution_path = f"static/solution_{timestamp}.kml"
-        image_path = f"static/flight_plan_{timestamp}.png"
-        text_path = f"static/flight_plan_{timestamp}.txt"
+        solution_path = os.path.join(APP_DIR, f"static/solution_{timestamp}.kml")
+        image_path = os.path.join(APP_DIR, f"static/flight_plan_{timestamp}.png")
+        text_path = os.path.join(APP_DIR, f"static/flight_plan_{timestamp}.txt")
         
         if not os.path.exists(kml_path):
             return jsonify({'success': False, 'error': 'KML file not found'})
@@ -195,33 +198,19 @@ def run_planning():
         
         # Sample from memory if enabled (same as main.py line 81-82)
         if memory_enabled:
-            original_cwd = os.getcwd()
-            try:
-                os.chdir('..')
-                # Use the first polygon set for memory sampling
-                if 'poly' in polygon_sets[0]:
-                    sample_from_memory(polygon_sets[0], memory_path='memory_database.json', n_samples=2)
-                else:
-                    sample_from_memory(polygon_sets, memory_path='memory_database.json', n_samples=2)
-            finally:
-                os.chdir(original_cwd)
+            memory_db_path = os.path.join(PROJECT_ROOT, 'memory_database.json')
+            # Use the first polygon set for memory sampling
+            if 'poly' in polygon_sets[0]:
+                sample_from_memory(polygon_sets[0], memory_path=memory_db_path, n_samples=2)
+            else:
+                sample_from_memory(polygon_sets, memory_path=memory_db_path, n_samples=2)
         
         # Generate prompt for flight planning
-        original_cwd = os.getcwd()
-        try:
-            os.chdir('..')
-            prompt = prompt_generator(float_coordinates, place_marks, human_msg, samples=False, system_message=prompt_key)
-        finally:
-            os.chdir(original_cwd)
+        prompt = prompt_generator(float_coordinates, place_marks, human_msg, samples=False, system_message=prompt_key)
         
         # Generate flight plan
         start_time = time.time()
-        original_cwd = os.getcwd()
-        try:
-            os.chdir('..')
-            response = response_generator(prompt, model_name, memory_enabled, float_coordinates)
-        finally:
-            os.chdir(original_cwd)
+        response = response_generator(prompt, model_name, memory_enabled, float_coordinates)
         end_time = time.time()
         
         if not response or not response.waypoints:
@@ -350,9 +339,9 @@ def run_planning():
                 'origin_dest_ok': evaluation.orig_dest_ok,
                 'out_of_flyzone': evaluation.out_pts
             },
-            'image_path': f"static/flight_plan_{timestamp}.png",
-            'solution_path': f"static/solution_{timestamp}.kml",
-            'text_path': f"static/flight_plan_{timestamp}.txt",
+            'image_path': f"/static/flight_plan_{timestamp}.png",
+            'solution_path': f"/static/solution_{timestamp}.kml",
+            'text_path': f"/static/flight_plan_{timestamp}.txt",
             'coach_enabled': coach_enabled,
             'solution_metrics': solution.core_metrics,
             'float_coordinates': float_coordinates,
@@ -394,15 +383,10 @@ def submit_review():
         )
         
         # Follow exact main.py workflow (lines 123-130)
-        original_cwd = os.getcwd()
-        try:
-            os.chdir('..')
-            if simplified_waypoints:
-                update_memory(float_coordinates, convert_waypoints_to_dict(simplified_waypoints), evaluation, human_msg)
-            else:
-                update_memory(float_coordinates, convert_waypoints_to_dict(response_waypoints), evaluation, human_msg)
-        finally:
-            os.chdir(original_cwd)
+        if simplified_waypoints:
+            update_memory(float_coordinates, convert_waypoints_to_dict(simplified_waypoints), evaluation, human_msg)
+        else:
+            update_memory(float_coordinates, convert_waypoints_to_dict(response_waypoints), evaluation, human_msg)
         
         logging.info(f"Memory updated with evaluation results - Human review: {human_review}")
         

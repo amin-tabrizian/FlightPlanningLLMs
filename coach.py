@@ -1,4 +1,5 @@
 import base64
+import os
 from openai import OpenAI
 import anthropic
 import instructor
@@ -6,6 +7,8 @@ import shapely
 from utils import convert_waypoints
 import logging
 from utils import Evaluation, haversine_distance
+
+_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 client = OpenAI()
 # client = anthropic.Anthropic()
 
@@ -101,9 +104,9 @@ def encode_image(image_path):
 def llm_evaluation(evaluation: Evaluation, image_path):
     # Getting the Base64 string
     base64_image = encode_image(image_path)
-    example1 = encode_image("coach_examples/example1.jpg")
-    example2 = encode_image("coach_examples/example2.jpg")
-    example3 = encode_image("coach_examples/example3.jpg")
+    example1 = encode_image(os.path.join(_PROJECT_ROOT, "coach_examples/example1.jpg"))
+    example2 = encode_image(os.path.join(_PROJECT_ROOT, "coach_examples/example2.jpg"))
+    example3 = encode_image(os.path.join(_PROJECT_ROOT, "coach_examples/example3.jpg"))
     logging.info(f"evaluating path planning for image {image_path}")
     # client = instructor.from_anthropic(
     #     anthropic.Anthropic(),

@@ -133,31 +133,37 @@ def get_polygons(scenario: Scenario, name: List[str]):
 
 
 def store_output(
-        origin: Origin, 
-        destination: Destination, 
-        polygons: Sequence[Polygon], 
-        human_preference: str, 
-        feedback: str,
+        origin: Origin,
+        destination: Destination,
+        polygons: Sequence[Polygon],
+        human_preference: str,
         solution_waypoints: List[List[float]],
-        is_valid: bool,
-        in_origin: bool,
-        in_destination: bool,
-        waypoints_outside_flyzone: List[List[float]] = [],
-        violated_polygons: List[List[Polygon]] = []
+        is_valid: Optional[bool] = None,
+        in_origin: Optional[bool] = None,
+        in_destination: Optional[bool] = None,
+        feedback: Optional[str] = None,
+        has_review: bool = False,
+        waypoints_outside_flyzone: Optional[List[List[float]]] = None,
+        violated_polygons: Optional[List[Polygon]] = None
     ):
     """
     Store the output of a scenario solution in the database.
+
+    When has_review is True the row represents a coach-augmented record (problem +
+    review). When has_review is False the row represents a problem-only record.
+    Queries filter on has_review to pick the desired sub-store.
 
     Args:
         origin (Origin): The origin of the scenario.
         destination (Destination): The destination of the scenario.
         polygons (Sequence[Polygon]): Polygons involved in the scenario.
         human_preference (str): Human preference description.
-        feedback (str): Feedback provided for the solution.
         solution_waypoints (List[List[float]]): Waypoints of the solution.
         is_valid (bool): Whether the solution is valid.
         in_origin (bool): Whether the solution starts in the origin.
         in_destination (bool): Whether the solution ends in the destination.
+        feedback (Optional[str]): Coach/human review. Only stored when has_review is True.
+        has_review (bool): True for the coach sub-store, False for the no-coach sub-store.
         waypoints_outside_flyzone (List[List[float]], optional): Waypoints outside the flyzone. Defaults to [].
         violated_polygons (List[List[Polygon]], optional): Polygons violated by the solution. Defaults to [].
 
@@ -169,37 +175,40 @@ def store_output(
         destination = session.merge(destination)
 
         polygons = [session.merge(p) for p in polygons]
+        merged_violated = [session.merge(p) for p in (violated_polygons or [])]
 
         assert origin.scenario == destination.scenario, "The origin and destination must belong to the same scenario."
-        feedback = ScenarioOutput(
+        record = ScenarioOutput(
             origin=origin,
             destination=destination,
             polygons=polygons,
             human_preference=human_preference,
-            feedback=feedback,
+            feedback=feedback if has_review else None,
+            has_review=has_review,
             solution_waypoints=solution_waypoints,
-            is_valid=is_valid,
-            in_origin=in_origin,
-            in_destination=in_destination,
-            waypoints_outside_flyzone=waypoints_outside_flyzone,
-            violated_polygons=violated_polygons,
+            is_valid=is_valid if has_review else None,
+            in_origin=in_origin if has_review else None,
+            in_destination=in_destination if has_review else None,
+            waypoints_outside_flyzone=waypoints_outside_flyzone if has_review else None,
+            violated_polygons=merged_violated if has_review else [],
         )
-        session.add(feedback)
+        session.add(record)
 
-        session.flush()  
+        session.flush()
         session.commit()
-    return feedback
+    return record
 
 def query_similar_feedback(
     origin: Origin,
     destination: Destination,
     polygons: Sequence[Polygon],
     human_preference: str,
-    metric: str = 'cosine_distance',  
+    metric: str = 'cosine_distance',
     order: Literal['inc', 'dec'] = 'inc',
-    threshold: Optional[float] = None,  
-    threshold_op: Literal['>=', '<=', '>', '<', '==', '!='] = '>=',  
-    filter_by_validity: Optional[bool] = None, 
+    threshold: Optional[float] = None,
+    threshold_op: Literal['>=', '<=', '>', '<', '==', '!='] = '>=',
+    filter_by_validity: Optional[bool] = None,
+    filter_by_has_review: Optional[bool] = None,
     n: Optional[int] = None
 ):
     """
@@ -260,6 +269,10 @@ def query_similar_feedback(
         if filter_by_validity is not None:
             validity_filter = ScenarioOutput.is_valid == filter_by_validity
 
+        has_review_filter = True
+        if filter_by_has_review is not None:
+            has_review_filter = ScenarioOutput.has_review == filter_by_has_review
+
         stmt = (
             select(ScenarioOutput, distance_expr)
             .where(
@@ -267,7 +280,8 @@ def query_similar_feedback(
                 ScenarioOutput.origin == origin,
                 ScenarioOutput.destination == destination,
                 threshold_filter,
-                validity_filter
+                validity_filter,
+                has_review_filter
             )
             .order_by(order_by_clause)
         ).limit(n)

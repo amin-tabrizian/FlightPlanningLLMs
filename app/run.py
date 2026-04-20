@@ -26,8 +26,9 @@ def main():
     sys.path.insert(0, str(parent_dir))
     
     print("[DEBUG] Ensuring required directories exist...")
-    os.makedirs('uploads', exist_ok=True)
-    os.makedirs('static', exist_ok=True)
+    app_dir = Path(__file__).parent
+    os.makedirs(app_dir / 'uploads', exist_ok=True)
+    os.makedirs(app_dir / 'static', exist_ok=True)
     
     print("[DEBUG] Setting environment variables for Flask...")
     os.environ.setdefault('FLASK_ENV', 'development')
