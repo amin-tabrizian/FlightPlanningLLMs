@@ -10,6 +10,7 @@ import datetime
 import json
 from typing import List, Tuple
 from shapely.geometry import LineString, Polygon
+from shapely.ops import nearest_points
 
 _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -242,6 +243,32 @@ def compute_total_path_length(waypoints):
 
 def compute_total_waypoints(waypoints):
     return len(waypoints)
+
+
+def min_polygon_clearance_km(waypoints, float_coordinates):
+    if len(waypoints) < 2:
+        return None
+
+    lon_first = abs(waypoints[0][0]) > 90
+    path = LineString(waypoints)
+    min_km = float("inf")
+
+    for name, coords in float_coordinates.items():
+        if "Origin" in name or "Destination" in name or "FlyZone" in name:
+            continue
+        poly = Polygon(coords)
+        p1, p2 = nearest_points(path, poly)
+        if lon_first:
+            pt1 = [p1.y, p1.x]
+            pt2 = [p2.y, p2.x]
+        else:
+            pt1 = [p1.x, p1.y]
+            pt2 = [p2.x, p2.y]
+        km = haversine_distance(pt1, pt2)
+        if km < min_km:
+            min_km = km
+
+    return min_km if min_km != float("inf") else None
 
 
 

@@ -4,9 +4,16 @@ from openai import OpenAI
 import anthropic
 import instructor
 import shapely
+from pydantic import BaseModel
 from utils import convert_waypoints
 import logging
 from utils import Evaluation, haversine_distance
+
+
+class LLMReview(BaseModel):
+    aligned: bool
+    evaluation: str
+    reasoning: str
 
 _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 client = OpenAI()
@@ -101,104 +108,96 @@ def rule_based_evaluation(waypoints, float_coordinates):
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
-def llm_evaluation(evaluation: Evaluation, image_path):
-    # Getting the Base64 string
+COACH_PROMPT = """You are a senior flight-operations reviewer evaluating an eVTOL flight plan that was produced by an automated planner.
+
+SCOPE
+Validity checks (polygon intersection, flyzone containment, origin/destination endpoints) have already been performed by geometric tools upstream. DO NOT re-evaluate validity. Your ONLY job is to judge how well the flight plan aligns with the flight operator's preference, or - if no preference is given - how optimal the plan looks.
+
+LEGEND (what you will see in the image)
+- Green rectangle: the flyzone.
+- Yellow polygons (labeled poly1-1, poly1-2, ...): hazardous zones.
+- Blue dot labeled "Origin": start of the route.
+- Blue dot labeled "Destination": end of the route.
+- Black line segments: path segments not intersecting any hazardous polygon.
+- Red line segments: path segments intersecting a hazardous polygon. (Informational only - ignore for this review.)
+
+GEOMETRIC EVALUATION (ground truth from upstream tools - trust this over the image)
+{geometric_summary}
+
+FLIGHT OPERATOR PREFERENCE
+\"\"\"{human_preference}\"\"\"
+
+EVALUATION TASK
+
+STEP 0 - Check validity first (from the GEOMETRIC EVALUATION block above):
+- If "Valid overall" is False, the path is INVALID. Do NOT judge preference alignment or optimality. Return:
+    aligned = False
+    evaluation = "Path is invalid - alignment not evaluated."
+    reasoning = a short summary of which geometric rule was broken (e.g. "Path intersects hazardous polygons poly1-1 and poly1-7." or "Final waypoint does not reach the destination." or "Waypoint X lies outside the flyzone.").
+  Stop here.
+
+STEP 1 - Only if the path is valid, evaluate alignment:
+- If a meaningful preference is provided above (non-empty and not "No preference" / "Do whatever looks reasonable"):
+    Judge how well the path follows that preference. Be specific about which part of the route satisfies or violates it (e.g. "the path hugs the eastern boundary as requested" or "the detour passes within 2 km of the hospital despite the max-clearance preference"). Set `aligned = True` only if the path clearly follows the preference.
+- If no meaningful preference is provided:
+    Judge the path on optimality only - is it close to the shortest reasonable route? Are there unnecessary detours, zig-zags, or sharp turns that a shorter path could avoid? Is buffer space used only where it earns safety, not arbitrarily? Set `aligned = True` if the path is near-optimal, False otherwise.
+
+Use the geometric evaluation above as hard facts - you do not need to re-verify which polygons were violated or whether endpoints match. For the alignment judgment, focus on the VISUAL pattern: shape of the detour, which side of polygons the path goes around, spacing of waypoints, distance from hazards. Cite concrete visual evidence (polygon names, direction of detour, which side of the flyzone, where the path turns). Do not speculate about data you cannot see in the image.
+
+OUTPUT
+Return the structured LLMReview object:
+  - aligned: bool - True if the path clearly follows the preference (or is near-optimal when no preference is given), False otherwise.
+  - evaluation: one- or two-sentence verdict on preference alignment (or optimality).
+  - reasoning: 2-4 sentences citing specific visual evidence."""
+
+
+def _format_geometric_summary(evaluation: Evaluation) -> str:
+    orig_ok, dest_ok = evaluation.orig_dest_ok if len(evaluation.orig_dest_ok) == 2 else (None, None)
+    lines = [
+        f"- Valid overall: {evaluation.valid}",
+        f"- Starts at origin: {orig_ok}",
+        f"- Ends at destination: {dest_ok}",
+        f"- Violated hazardous polygons: {evaluation.polys or 'none'}",
+        f"- Waypoints outside the flyzone: {evaluation.out_pts or 'none'}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_preference(human_preference):
+    text = human_preference.strip() if human_preference else ""
+    placeholder = {"", "no preference", "no preference.", "do whatever looks reasonable", "do whatever looks reasonable."}
+    if text.lower() in placeholder:
+        return "(none - evaluate on optimality only)"
+    return text
+
+
+def llm_evaluation(evaluation: Evaluation, image_path, human_preference) -> LLMReview:
     base64_image = encode_image(image_path)
-    example1 = encode_image(os.path.join(_PROJECT_ROOT, "coach_examples/example1.jpg"))
-    example2 = encode_image(os.path.join(_PROJECT_ROOT, "coach_examples/example2.jpg"))
-    example3 = encode_image(os.path.join(_PROJECT_ROOT, "coach_examples/example3.jpg"))
     logging.info(f"evaluating path planning for image {image_path}")
-    # client = instructor.from_anthropic(
-    #     anthropic.Anthropic(),
-    #     )
-    # response = client.chat.completions.create(
-    #     max_tokens=1024,
-    #     model="claude-3-5-sonnet-20241022",
-    #     messages=[
-    #         { "role": "user",
-    #         "content": [
-    #             {
-    #                 "type": "text",
-    #                 "text": """Evaluate this path planning that is done by an llm.
-    #                 The path should be evaluated by the following criterias:
-    #                 1- It should start and end from origin and destination respectively.
-    #                 2- It should not intersect yellow wind polygons.
-    #                 3- It should stay in red flyzone.
-    #                 Your output should be weather the path planning is valid or unvalid, 
-    #                 how optimal it is if it was a valid path (evaluation in a few sentences) 
-    #                 other wise just write INVALID and the reasoning.
-    #                 For optimality, think about how indirect the path is. \
-    #                 Is there a more direct path that could have been taken? \
-    #                 The planned path is in black dashed line.""",
-    #             },
-    #             {
-    #                 "type": "image",
-    #                 "source": {
-    #                     "type": "base64",
-    #                     "media_type": "image/jpeg",
-    #                     "data": base64_image,}
-    #             },
-    #         ],}],
-    #     response_model=Evaluation
-    # )
-    
+
+    prompt_text = COACH_PROMPT.format(
+        human_preference=_format_preference(human_preference),
+        geometric_summary=_format_geometric_summary(evaluation),
+    )
+
     response = client.beta.chat.completions.parse(
         model="gpt-4o-2024-11-20",
-        
         temperature=0.0,
         messages=[
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": """Evaluate this path planning that is done by an llm.
-                        The path should be evaluated by the following criterias:
-                        1- It should start and end from origin and destination respectively.
-                        2- It should not intersect yellow wind polygons. 
-                        (So, if a path intersects yellow wind polygon, it is invalid)
-                        3- It should stay in green flyzone.
-                        Your output should be like: 
-                        1- Is the path valid? 
-                        2- Which waypoints are voilating polygons? (list of 2 elements)
-                        3- Does the path start with origin and end in the destination?
-                        4- Which points are outside of the flyzone
-                        5- How optimal the path is? If the path is invalid, mention the reason of invalidity (e.g., polygon names if they are being intersected or if the path exits the fly zone.).
-                        For optimality, think about how indirect the path is.
-                        Is there a more direct path that could have been taken while satisfying the conditions? 
-                        The planned path is in black line. The voilating parts are in red. The intersection of the path with the yellow wind polygons is given to you.
-                        """ + f'''Rule based evaluation: 
-                        1- Is the path valid? {evaluation.valid}
-                        2- List of polygons being violated: and the corrosponding waypoints: {evaluation.polys}
-                        3- List of corrosponding waypoints intersecting the polygons: {evaluation.segs}
-                        4- Does the path start with origin and end in the destination? {evaluation.orig_dest_ok}
-                        5- List of the points out of flyzone? {evaluation.out_pts}''',
-                    },
-                    # {
-                    #     "type": "image_url",
-                    #     "image_url": {"url": f"data:image/jpeg;base64,{example1}"},
-                    # },
-                    # {
-                    #     "type": "image_url",
-                    #     "image_url": {"url": f"data:image/jpeg;base64,{example2}"},
-                    # },
-                    # {
-                    #     "type": "image_url",
-                    #     "image_url": {"url": f"data:image/jpeg;base64,{example3}"},
-                    # },
+                    {"type": "text", "text": prompt_text},
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
                     },
                 ],
-                
             }
-        
         ],
-            response_format=Evaluation,
+        response_format=LLMReview,
     )
-    response = response.choices[0].message.parsed
-    return response
+    return response.choices[0].message.parsed
 
 
 

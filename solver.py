@@ -39,24 +39,37 @@ def batch_response_generator(batch_path='batch.jsonl', description="Test"):
 def response_generator(input, model, memory, float_coordinates):
     system_msg = input[0]
     user_msg = input[1]
-    if model == "o3-mini":
-        model = "o3-mini-2025-01-31"
-    elif model == "o3":
-        model = "o3-2025-04-16"
-    elif model == "claude-3-7":
-        model = "claude-3-7-sonnet-20250219"
-    elif model == "claude-3-5":
-        model = "claude-3-5-haiku-20241022"
-    elif model == "claude-4-sonnet":
-        model = "claude-sonnet-4-0"
-    elif model == "claude-4-opus":
-        model = "claude-opus-4-20250514"
+    alias_map = {
+        "o3-mini": "o3-mini-2025-01-31",
+        "o3": "o3-2025-04-16",
+        "claude-3-7": "claude-3-7-sonnet-20250219",
+        "claude-3-5": "claude-3-5-haiku-20241022",
+        "claude-4-sonnet": "claude-sonnet-4-0",
+        "claude-4-opus": "claude-opus-4-20250514",
+        "claude-haiku-4-5": "claude-haiku-4-5-20251001",
+        "deepseek-r1": "deepseek-reasoner",
+    }
+    model = alias_map.get(model, model)
+
+    openai_models = {
+        "gpt-4o", "gpt-4o-mini", "gpt-4.1",
+        "o3-mini-2025-01-31", "o3-2025-04-16", "o4-mini",
+    }
+    anthropic_models = {
+        "claude-3-7-sonnet-20250219",
+        "claude-3-5-haiku-20241022",
+        "claude-sonnet-4-0",
+        "claude-opus-4-20250514",
+        "claude-sonnet-4-6",
+        "claude-haiku-4-5-20251001",
+    }
+
     if memory == True:
         memory_prompt = "Here are previous responses of Flight plannings with evaluations: \n" + generate_natural_language_review(os.path.join(_PROJECT_ROOT, 'memory.json'))
     else:
         memory_prompt = ""
         logging.info("Memory is deactivated.")
-    if model == "gpt-4o" or model == "o3-mini-2025-01-31" or model == "gpt-4o-mini" or model == "o4-mini" or model == "o3-2025-04-16":
+    if model in openai_models:
         client = OpenAI()
         logging.info("Requesting flight plan from OpenAI API.")
         messages = [
@@ -74,22 +87,47 @@ def response_generator(input, model, memory, float_coordinates):
         system_fingerprint = getattr(completion, 'system_fingerprint', None)
         logging.info(f"System fingerprint is {system_fingerprint if system_fingerprint else 'not available'}")
         response = completion.choices[0].message.parsed
-    elif model == "claude-3-7-sonnet-20250219" or model == "claude-3-5-haiku-20241022" or model == "claude-sonnet-4-0" or model ==  "claude-opus-4-20250514":
+    elif model in anthropic_models:
+        use_thinking = model == "claude-sonnet-4-6"
         client = instructor.from_anthropic(
-        anthropic.Anthropic(),
+            anthropic.Anthropic(),
+            mode=instructor.Mode.ANTHROPIC_REASONING_TOOLS if use_thinking else instructor.Mode.ANTHROPIC_TOOLS,
         )
         logging.info("Requesting flight plan from Anthropic API.")
         messages = [
                 {"role": "system", "content": system_msg + memory_prompt},
                 {"role": "user", "content":  user_msg},]
-        response = client.chat.completions.create(
-
-            max_tokens=1024,
-            model=model,
-            messages= messages,
-            response_model=FlightPlan
+        create_kwargs = {
+            "model": model,
+            "messages": messages,
+            "response_model": FlightPlan,
+        }
+        if use_thinking:
+            create_kwargs["max_tokens"] = 8000
+            create_kwargs["temperature"] = 1
+            create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": 4000}
+        else:
+            create_kwargs["max_tokens"] = 1024
+        response = client.chat.completions.create(**create_kwargs)
+    elif model == "deepseek-reasoner":
+        client = instructor.from_openai(
+            OpenAI(
+                base_url="https://api.deepseek.com/v1",
+                api_key=os.getenv("DEEPSEEK_API_KEY"),
+            ),
+            mode=instructor.Mode.JSON,
         )
-    
+        logging.info("Requesting flight plan from DeepSeek API.")
+        messages = [
+                {"role": "system", "content": system_msg + memory_prompt},
+                {"role": "user", "content":  user_msg},]
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            response_model=FlightPlan,
+            max_tokens=8000,
+        )
+
     elif model == "Astar":
         logging.info("A* has been chosen as the method.")
         response = Astar_Path(

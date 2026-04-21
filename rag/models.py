@@ -44,7 +44,8 @@ class ScenarioOutput(Base):
 
     _embedding: Mapped[list[float]] = mapped_column("embedding", Vector(1024))
     _human_preference: Mapped[str] = mapped_column("human_preference", Text)
-    feedback: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+    human_feedback: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+    vlm_feedback: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
     has_review: Mapped[bool] = mapped_column(Boolean, default=False)
 
     solution_waypoints: Mapped[list[list[float]]] = mapped_column(Text, default=lambda: [])

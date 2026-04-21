@@ -141,7 +141,8 @@ def store_output(
         is_valid: Optional[bool] = None,
         in_origin: Optional[bool] = None,
         in_destination: Optional[bool] = None,
-        feedback: Optional[str] = None,
+        human_feedback: Optional[str] = None,
+        vlm_feedback: Optional[str] = None,
         has_review: bool = False,
         waypoints_outside_flyzone: Optional[List[List[float]]] = None,
         violated_polygons: Optional[List[Polygon]] = None
@@ -162,7 +163,8 @@ def store_output(
         is_valid (bool): Whether the solution is valid.
         in_origin (bool): Whether the solution starts in the origin.
         in_destination (bool): Whether the solution ends in the destination.
-        feedback (Optional[str]): Coach/human review. Only stored when has_review is True.
+        human_feedback (Optional[str]): Human-written review. Only stored when has_review is True.
+        vlm_feedback (Optional[str]): VLM-written review. Only stored when has_review is True.
         has_review (bool): True for the coach sub-store, False for the no-coach sub-store.
         waypoints_outside_flyzone (List[List[float]], optional): Waypoints outside the flyzone. Defaults to [].
         violated_polygons (List[List[Polygon]], optional): Polygons violated by the solution. Defaults to [].
@@ -183,7 +185,8 @@ def store_output(
             destination=destination,
             polygons=polygons,
             human_preference=human_preference,
-            feedback=feedback if has_review else None,
+            human_feedback=human_feedback if has_review else None,
+            vlm_feedback=vlm_feedback if has_review else None,
             has_review=has_review,
             solution_waypoints=solution_waypoints,
             is_valid=is_valid if has_review else None,

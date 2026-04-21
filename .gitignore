@@ -13,6 +13,12 @@ coach_examples/
 *memory*
 app/venv/
 app/.env
+.env
 rlrd/
 static/
 flight_plans/
+.claude/
+results/
+runs_warmup/
+runs_ablation/
+logs/
