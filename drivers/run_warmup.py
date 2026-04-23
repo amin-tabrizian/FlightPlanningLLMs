@@ -49,6 +49,12 @@ def main():
                     tasks.append((poly, orig, dest, coach_flag, tag))
 
     total = len(tasks)
+    print(f"\n{'='*60}", flush=True)
+    print(f"  WARMUP  model={args.model}  tasks={total}", flush=True)
+    print(f"  polygons={args.polygons}", flush=True)
+    print(f"  report={report}", flush=True)
+    print(f"{'='*60}\n", flush=True)
+
     failed = 0
     t0 = time.time()
     for i, (poly, orig, dest, coach_flag, tag) in enumerate(tasks, 1):
@@ -65,8 +71,10 @@ def main():
         ]
         if coach_flag:
             cmd.append("--coach")
+        t_task = time.time()
         r = subprocess.run(cmd, capture_output=True, text=True)
-        status = "OK " if r.returncode == 0 else "FAIL"
+        task_sec = time.time() - t_task
+        status = "OK  " if r.returncode == 0 else "FAIL"
         if r.returncode != 0:
             failed += 1
             log_path = f"{out_dir}/{tag}.err.log"
@@ -74,9 +82,22 @@ def main():
                 f.write(r.stdout + "\n" + r.stderr)
         elapsed = time.time() - t0
         eta = elapsed / i * (total - i)
-        print(f"[{i:3d}/{total}] {status} {tag}  (elapsed {elapsed:6.1f}s, ETA {eta:6.1f}s)")
+        rate = i / elapsed * 60
+        line = (f"[{i:3d}/{total}] {status}"
+                f"  model={args.model}  poly={poly}  orig={orig}  dest={dest}"
+                f"  coach={'yes' if coach_flag else 'no'}"
+                f"  ({task_sec:.1f}s/task  {rate:.1f}/min  ETA {eta:5.0f}s)")
+        if r.returncode != 0:
+            snippet = (r.stderr or r.stdout).strip().splitlines()
+            last = snippet[-1][:120] if snippet else "no output"
+            line += f"\n         ^^^ {last}"
+        print(line, flush=True)
 
-    print(f"\nWarmup done. {total - failed}/{total} passed. Report: {report}")
+    elapsed = time.time() - t0
+    print(f"\n{'='*60}", flush=True)
+    print(f"  Warmup done: {total - failed}/{total} passed  ({elapsed:.1f}s total)", flush=True)
+    print(f"  Report: {report}", flush=True)
+    print(f"{'='*60}\n", flush=True)
     if failed:
         sys.exit(1)
 

@@ -36,20 +36,22 @@ CONDITIONS = [
 def run_one(task):
     cmd = task["cmd"]
     tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False)
+    tmp_path = tmp.name
     tmp.close()
-    cmd = cmd + ["--report_file", tmp.name]
+    os.unlink(tmp_path)  # so main.py sees a new file and writes the header
+    cmd = cmd + ["--report_file", tmp_path]
     r = subprocess.run(cmd, capture_output=True, text=True)
     row = None
     try:
-        if os.path.getsize(tmp.name) > 0:
-            rows = list(csv.DictReader(open(tmp.name)))
+        if os.path.getsize(tmp_path) > 0:
+            rows = list(csv.DictReader(open(tmp_path)))
             if rows:
                 row = rows[0]
     except FileNotFoundError:
         pass
     finally:
         try:
-            os.unlink(tmp.name)
+            os.unlink(tmp_path)
         except OSError:
             pass
     if row is not None:
@@ -102,16 +104,27 @@ def main():
                         tasks.append({
                             "cmd": cmd,
                             "tag": tag,
+                            "poly": poly,
+                            "orig": orig,
+                            "dest": dest,
                             "pref_key": pref_key,
                             "condition": cond_name,
                         })
 
     total = len(tasks)
-    print(f"Ablation: {total} tasks, workers={args.workers}")
-    print(f"Report: {report}")
+    cond_names = [c for c, _ in CONDITIONS]
+    pref_names = [p for p, _ in PREFERENCES]
+    print(f"\n{'='*60}", flush=True)
+    print(f"  ABLATION  model={args.model}  tasks={total}  workers={args.workers}", flush=True)
+    print(f"  polygons={args.polygons}", flush=True)
+    print(f"  conditions={cond_names}", flush=True)
+    print(f"  preferences={pref_names}", flush=True)
+    print(f"  report={report}", flush=True)
+    print(f"{'='*60}\n", flush=True)
 
     t0 = time.time()
     failed = 0
+    fail_by_cond: dict[str, int] = {c: 0 for c in cond_names}
     writer = None
     agg_fh = open(report, "w", newline="")
     try:
@@ -119,9 +132,10 @@ def main():
             futures = [ex.submit(run_one, t) for t in tasks]
             for i, fut in enumerate(as_completed(futures), 1):
                 task, code, row, err = fut.result()
-                status = "OK " if code == 0 else "FAIL"
+                status = "OK  " if code == 0 else "FAIL"
                 if code != 0:
                     failed += 1
+                    fail_by_cond[task["condition"]] = fail_by_cond.get(task["condition"], 0) + 1
                     log_path = f"{out_dir}/{task['tag']}.err.log"
                     with open(log_path, "w") as lf:
                         lf.write(err)
@@ -133,11 +147,27 @@ def main():
                     agg_fh.flush()
                 elapsed = time.time() - t0
                 eta = elapsed / i * (total - i)
-                print(f"[{i:4d}/{total}] {status} {task['tag']}  (elapsed {elapsed:6.1f}s, ETA {eta:6.1f}s)")
+                rate = i / elapsed * 60
+                line = (f"[{i:4d}/{total}] {status}"
+                        f"  model={args.model}  poly={task['poly']}"
+                        f"  orig={task['orig']}  dest={task['dest']}"
+                        f"  pref={task['pref_key']}  cond={task['condition']}"
+                        f"  ({rate:.1f}/min  ETA {eta:5.0f}s  fail={failed})")
+                if code != 0:
+                    snippet = err.strip().splitlines()
+                    last = snippet[-1][:120] if snippet else "no output"
+                    line += f"\n          ^^^ {last}"
+                print(line, flush=True)
     finally:
         agg_fh.close()
 
-    print(f"\nAblation done. {total - failed}/{total} passed. Report: {report}")
+    elapsed = time.time() - t0
+    print(f"\n{'='*60}", flush=True)
+    print(f"  Ablation done: {total - failed}/{total} passed  ({elapsed:.1f}s total)", flush=True)
+    if failed:
+        print(f"  Failures by condition: { {k: v for k, v in fail_by_cond.items() if v} }", flush=True)
+    print(f"  Report: {report}", flush=True)
+    print(f"{'='*60}\n", flush=True)
     if failed:
         sys.exit(1)
 
