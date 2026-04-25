@@ -215,11 +215,10 @@ logging.info(f"Starts with origin and ends in destination: {evaluation.orig_dest
 
 
 llm_review = None
-# Uncomment this to enable Vlm review
-# if args.coach and args.image_path: 
-#     llm_review = llm_evaluation(evaluation, args.image_path, human_msg)
-#     logging.info(f"LLM review aligned={llm_review.aligned}: {llm_review.evaluation}")
-#     logging.info(f"LLM reasoning: {llm_review.reasoning}")
+if args.coach and args.image_path:
+    llm_review = llm_evaluation(evaluation, args.image_path, human_msg)
+    logging.info(f"LLM review aligned={llm_review.aligned}: {llm_review.evaluation}")
+    logging.info(f"LLM reasoning: {llm_review.reasoning}")
 
 if args.coach and args.human_review:
     logging.info("Any comments about the solution?")

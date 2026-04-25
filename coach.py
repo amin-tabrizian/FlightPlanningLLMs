@@ -116,7 +116,7 @@ Validity checks (polygon intersection, flyzone containment, origin/destination e
 LEGEND (what you will see in the image)
 - Green rectangle: the flyzone.
 - Yellow polygons (labeled poly1-1, poly1-2, ...): hazardous zones.
-- Blue dot labeled "Origin": start of the route.
+- Green dot labeled "Origin": start of the route.
 - Blue dot labeled "Destination": end of the route.
 - Black line segments: path segments not intersecting any hazardous polygon.
 - Red line segments: path segments intersecting a hazardous polygon. (Informational only - ignore for this review.)
@@ -148,8 +148,7 @@ OUTPUT
 Return the structured LLMReview object:
   - aligned: bool - True if the path clearly follows the preference (or is near-optimal when no preference is given), False otherwise.
   - evaluation: one- or two-sentence verdict on preference alignment (or optimality).
-  - reasoning: 2-4 sentences citing specific visual evidence."""
-
+"""
 
 def _format_geometric_summary(evaluation: Evaluation) -> str:
     orig_ok, dest_ok = evaluation.orig_dest_ok if len(evaluation.orig_dest_ok) == 2 else (None, None)
@@ -181,8 +180,7 @@ def llm_evaluation(evaluation: Evaluation, image_path, human_preference) -> LLMR
     )
 
     response = client.beta.chat.completions.parse(
-        model="gpt-4o-2024-11-20",
-        temperature=0.0,
+        model="gpt-5",
         messages=[
             {
                 "role": "user",

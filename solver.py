@@ -52,7 +52,7 @@ def response_generator(input, model, memory, float_coordinates):
     model = alias_map.get(model, model)
 
     openai_models = {
-        "gpt-4o", "gpt-4o-mini", "gpt-4.1",
+        "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-5.4",
         "o3-mini-2025-01-31", "o3-2025-04-16", "o4-mini",
     }
     anthropic_models = {
@@ -125,7 +125,7 @@ def response_generator(input, model, memory, float_coordinates):
             model=model,
             messages=messages,
             response_model=FlightPlan,
-            max_tokens=8000,
+            max_tokens=32000,
         )
 
     elif model == "Astar":

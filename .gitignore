@@ -22,3 +22,7 @@ results/
 runs_warmup/
 runs_ablation/
 logs/
+paper/
+appendix/
+FRAMe-ICML-LM4Plan/
+run_vision.sh
