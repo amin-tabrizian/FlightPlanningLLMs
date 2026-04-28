@@ -26,3 +26,4 @@ paper/
 appendix/
 FRAMe-ICML-LM4Plan/
 run_vision.sh
+run_test.sh

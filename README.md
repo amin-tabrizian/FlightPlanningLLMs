@@ -18,22 +18,26 @@ Optional flags:
 - `--human_review` — prompt for human feedback after planning
 
 
-## Warmup Runs
+## Experiment Runs
 
-Warmup experiments assess basic plan validity across scenarios and models, with and without the VLM coach:
+All experiments (warmup and ablation) are driven by scripts in `drivers/`:
+
+- `drivers/run_warmup.py` — 75 scenarios × {no-coach, coach} = 150 runs per model; populates the RAG DB
+- `drivers/run_ablation.py` — 75 scenarios × 3 preferences × 3 conditions = 675 runs per model; read-only DB
+
+To run all models end-to-end (warmup + ablation):
 
 ```bash
 bash run_all.sh
 ```
 
-
-## Ablation Runs
-
-Ablation experiments evaluate preference alignment across three prompting strategies — baseline, RAG, and RAG+Coach — over multiple difficulty levels and human preference types (clearance, distance, waypoints):
+To run a subset of models, set the `MODELS` environment variable:
 
 ```bash
-bash run_test.sh
+MODELS="o4-mini claude-haiku-4-5" bash run_all.sh
 ```
+
+Results are written to `results/` and logs to `logs/`.
 
 
 ## Synthetic Polygon Dataset
